@@ -201,13 +201,40 @@ if file_parsed and not df_display_clean.empty:
                 st.metric("Total Admin EDC/QRIS", f"Rp {tot_admin_simrs:,.2f}")
         # --------------------------------------------------
 
-        csv_olahan = df_display_clean.to_csv(index=False).encode('utf-8')
+        # --- UBAH MENJADI FORMAT EXCEL (.xlsx) ---
+        import io
+        
+        output = io.BytesIO()
+        with pd.ExcelWriter(output, engine='openpyxl') as writer:
+            # Tulis data utama ke sheet Excel
+            df_display_clean.to_excel(writer, index=False, sheet_name='Ringkasan SIMRS')
+            
+            # Ambil workbook dan worksheet untuk styling tambahan
+            workbook = writer.book
+            worksheet = writer.sheets['Ringkasan SIMRS']
+            
+            # Tambahkan baris total di bawahnya secara rapi
+            row_idx = len(df_display_clean) + 3 # Beri jarak 2 baris kosong
+            
+            worksheet.cell(row=row_idx, column=1, value="TOTAL KESELURUHAN")
+            
+            # Ambil indeks kolom secara dinamis atau default
+            # Asumsi kolom ke-5 adalah Nominal, ke-6 adalah Admin, ke-7 adalah Netto (sesuaikan jika berbeda)
+            try:
+                worksheet.cell(row=row_idx, column=5, value=tot_tunai_simrs + tot_nontunai_simrs)
+                worksheet.cell(row=row_idx, column=6, value=tot_admin_simrs)
+                worksheet.cell(row=row_idx, column=7, value=(tot_tunai_simrs + tot_nontunai_simrs) - tot_admin_simrs)
+            except:
+                pass
+                
+        excel_data = output.getvalue()
+
         st.download_button(
-            label="📥 Unduh Ringkasan SIMRS (CSV)",
-            data=csv_olahan,
-            file_name=f"Ringkasan_SIMRS_{tgl_shift}.csv",
-            mime="text/csv"
-        )
+            label="📥 Unduh Ringkasan SIMRS (XLSX)",
+            data=excel_data,
+            file_name=f"Ringkasan_SIMRS_{tgl_shift}.xlsx",
+            mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+         )
 
 # Cash Breakdown & Calculations
 st.markdown("---")
