@@ -218,7 +218,11 @@ total_pendapatan_netto = total_tunai_netto + total_non_tunai_netto
 st.markdown("---")
 st.subheader("⏳ Transaksi / Tagihan Dalam Proses (Pending / Outstanding)")
 initial_pending_data = pd.DataFrame([
-    {"No. Transaksi / RM": "TRX-00129", "Keterangan / Kendala": "Menunggu konfirmasi settlement EDC", "Nominal (Rp)": 250000.0}
+    {
+        "Nama / No RM": "Budi / RM-00129", 
+        "Keterangan / Kendala": "Menunggu konfirmasi settlement EDC", 
+        "Status / Tindak Lanjut": "Dalam Proses EDC"
+    }
 ])
 edited_pending_df = st.data_editor(
     initial_pending_data,
@@ -345,29 +349,28 @@ def create_pdf():
     elements.append(Spacer(1, 10))
 
     elements.append(Paragraph("<b>3. TRANSAKSI / TAGIHAN DALAM PROSES (PENDING / OUTSTANDING)</b>", normal_bold))
-    pending_table_data = [["No.", "No. Transaksi / RM", "Keterangan / Kendala", "Nominal (Rp)"]]
+    pending_table_data = [["No.", "Nama / No RM", "Keterangan / Kendala", "Status / Tindak Lanjut"]]
     
     if not edited_pending_df.empty:
         for idx, row in edited_pending_df.reset_index(drop=True).iterrows():
-            # Ambil nilai secara aman dari kolom indeks ke-2 atau row terakhir jika diubah
             try:
-                nom = float(row.iloc[-1]) if len(row) > 0 else 0.0
-                ket = str(row.iloc[-2]) if len(row) > 1 else ""
-                no_trx = str(row.iloc[-3]) if len(row) > 2 else ""
+                # Mengambil data berdasarkan nama kolom baru secara aman
+                nama_orm = str(row.iloc[0]) if len(row) > 0 else ""
+                ket = str(row.iloc[1]) if len(row) > 1 else ""
+                status_tindakan = str(row.iloc[2]) if len(row) > 2 else ""
             except:
-                nom = 0.0
+                nama_orm = ""
                 ket = ""
-                no_trx = ""
+                status_tindakan = ""
                 
             pending_table_data.append([
                 str(idx + 1),
-                no_trx,
+                nama_orm,
                 ket,
-                f"Rp {nom:,.2f}"
+                status_tindakan
             ])
-        pending_table_data.append(["", "", "TOTAL NOMINAL DALAM PROSES", f"Rp {total_nominal_pending:,.2f}"])
     else:
-        pending_table_data.append(["-", "Tidak ada transaksi pending", "-", "Rp 0.00"])
+        pending_table_data.append(["-", "Tidak ada transaksi pending", "-", "-"])
 
     t_pending = Table(pending_table_data, colWidths=[30, 130, 230, 114])
     t_pending.setStyle(TableStyle([
