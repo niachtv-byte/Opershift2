@@ -84,14 +84,12 @@ with st.container():
         col_jenis = cols_map.get('jenis/cara bayar') or cols_map.get('jenis pembayaran') or cols_map.get('metode pembayaran')
         col_bersih = cols_map.get('pendapatan bersih') or cols_map.get('total transaksi') or cols_map.get('nominal')
 
-        # Deteksi kolom admin: prioritas pencarian dari kolom di sebelah kanan (atau yang mengandung kata admin/fee/edc/qris/potongan)
+        # Deteksi kolom admin: prioritas pencarian keyword, atau cek kolom di sebelah kanan
         col_admin = None
-        # 1. Cari berdasarkan keyword di seluruh kolom
         for c_low, c_orig in cols_map.items():
             if any(k in c_low for k in ['admin', 'fee', 'edc', 'qris', 'qr', 'potongan']):
                 col_admin = c_orig
         
-        # 2. Jika belum ketemu, cek 3 kolom terakhir di sebelah kanan dataframe secara otomatis
         if not col_admin and len(df.columns) > 0:
             for c_orig in reversed(df.columns[-3:]):
                 c_low = str(c_orig).strip().lower()
@@ -387,4 +385,9 @@ def create_pdf():
     sig_data = [
         ["Petugas Shift Lama (Menyerahkan)", "Petugas Shift Baru (Menerima)", "Mengetahui (Penanggung Jawab Kasir)"],
         ["\n\n\n________________________", "\n\n\n________________________", "\n\n\n________________________"],
-        [petugas_l
+        [petugas_lama, petugas_baru, pj_name]
+    ]
+    t_sig = Table(sig_data, colWidths=[180, 180, 190])
+    t_sig.setStyle(TableStyle([
+        ('ALIGN', (0,0), (-1,-1), 'CENTER'),
+        ('FONTSIZE', (0,0), 
