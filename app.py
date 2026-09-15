@@ -225,7 +225,7 @@ total_pendapatan_netto = total_tunai_netto + total_non_tunai_netto
 st.markdown("---")
 st.subheader("⏳ Transaksi / Tagihan Dalam Proses (Pending / Outstanding)")
 initial_pending_data = pd.DataFrame([
-    {"Nama / No RM": " ", "Keterangan / Kendala": " ", "Status / Tindak Lanjut":  }
+    {"No. Transaksi / RM": "TRX-00129", "Keterangan / Kendala": "Menunggu konfirmasi settlement EDC", "Nominal (Rp)": 250000.0}
 ])
 edited_pending_df = st.data_editor(
     initial_pending_data,
@@ -341,7 +341,7 @@ def create_pdf():
     elements.append(Spacer(1, 10))
 
     elements.append(Paragraph("<b>3. TRANSAKSI / TAGIHAN DALAM PROSES (PENDING / OUTSTANDING)</b>", normal_bold))
-    pending_table_data = [["No.", "No. Transaksi / RM", "Keterangan / Kendala", "Nominal (Rp)"]]
+    pending_table_data = [["No.", "Nama / No RM", "Keterangan / Kendala", "Status / Tindak Lanjut"]]
     
     if not edited_pending_df.empty:
         for idx, row in edited_pending_df.reset_index(drop=True).iterrows():
