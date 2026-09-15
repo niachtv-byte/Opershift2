@@ -201,7 +201,7 @@ if file_parsed and not df_display_clean.empty:
                 st.metric("Total Admin EDC/QRIS", f"Rp {tot_admin_simrs:,.2f}")
         # --------------------------------------------------
 
-        # --- UBAH MENJADI FORMAT EXCEL (.xlsx) ---
+        # --- UBAH MENJADI FORMAT EXCEL (.xlsx) DENGAN TOTAL TUNAI & NON-TUNAI TERPISAH ---
         import io
         
         output = io.BytesIO()
@@ -209,21 +209,43 @@ if file_parsed and not df_display_clean.empty:
             # Tulis data utama ke sheet Excel
             df_display_clean.to_excel(writer, index=False, sheet_name='Ringkasan SIMRS')
             
-            # Ambil workbook dan worksheet untuk styling tambahan
-            workbook = writer.book
+            # Ambil worksheet untuk menambahkan baris total terpisah
             worksheet = writer.sheets['Ringkasan SIMRS']
             
-            # Tambahkan baris total di bawahnya secara rapi
-            row_idx = len(df_display_clean) + 3 # Beri jarak 2 baris kosong
+            # Tentukan baris awal untuk total (berjarak 2 baris dari data terakhir)
+            start_row = len(df_display_clean) + 3
             
-            worksheet.cell(row=row_idx, column=1, value="TOTAL KESELURUHAN")
-            
-            # Ambil indeks kolom secara dinamis atau default
-            # Asumsi kolom ke-5 adalah Nominal, ke-6 adalah Admin, ke-7 adalah Netto (sesuaikan jika berbeda)
+            # Hitung total khusus Tunai & Non-Tunai dari df_grouped_final jika ada
+            if 'Cara Bayar' in df_grouped_final.columns:
+                cash_filter = df_grouped_final['Cara Bayar'].astype(str).str.upper().str.contains('CASH|TUNAI')
+                
+                tunai_nominal = float(df_grouped_final[cash_filter]['clean_bersih'].sum())
+                tunai_admin = float(df_grouped_final[cash_filter]['clean_admin'].sum())
+                tunai_netto = tunai_nominal - tunai_admin
+                
+                nontunai_nominal = float(df_grouped_final[~cash_filter]['clean_bersih'].sum())
+                nontunai_admin = float(df_grouped_final[~cash_filter]['clean_admin'].sum())
+                nontunai_netto = nontunai_nominal - nontunai_admin
+            else:
+                tunai_nominal, tunai_admin, tunai_netto = 0, 0, 0
+                nontunai_nominal, nontunai_admin, nontunai_netto = 0, 0, 0
+
+            # Baris 1: Total Tunai
+            worksheet.cell(row=start_row, column=1, value="TOTAL TUNAI")
             try:
-                worksheet.cell(row=row_idx, column=5, value=tot_tunai_simrs + tot_nontunai_simrs)
-                worksheet.cell(row=row_idx, column=6, value=tot_admin_simrs)
-                worksheet.cell(row=row_idx, column=7, value=(tot_tunai_simrs + tot_nontunai_simrs) - tot_admin_simrs)
+                worksheet.cell(row=start_row, column=5, value=tunai_nominal)
+                worksheet.cell(row=start_row, column=6, value=tunai_admin)
+                worksheet.cell(row=start_row, column=7, value=tunai_netto)
+            except:
+                pass
+                
+            # Baris 2: Total Non-Tunai
+            row_nontunai = start_row + 1
+            worksheet.cell(row=row_nontunai, column=1, value="TOTAL NON-TUNAI")
+            try:
+                worksheet.cell(row=row_nontunai, column=5, value=nontunai_nominal)
+                worksheet.cell(row=row_nontunai, column=6, value=nontunai_admin)
+                worksheet.cell(row=row_nontunai, column=7, value=nontunai_netto)
             except:
                 pass
                 
@@ -234,7 +256,7 @@ if file_parsed and not df_display_clean.empty:
             data=excel_data,
             file_name=f"Ringkasan_SIMRS_{tgl_shift}.xlsx",
             mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-         )
+        )
 
 # Cash Breakdown & Calculations
 st.markdown("---")
