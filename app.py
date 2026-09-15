@@ -225,7 +225,7 @@ total_pendapatan_netto = total_tunai_netto + total_non_tunai_netto
 st.markdown("---")
 st.subheader("⏳ Transaksi / Tagihan Dalam Proses (Pending / Outstanding)")
 initial_pending_data = pd.DataFrame([
-    {"No. Transaksi / RM": "TRX-00129", "Keterangan / Kendala": "Menunggu konfirmasi settlement EDC", "Nominal (Rp)": 250000.0}
+    {"Nama / No RM": "TRX-00129", "Keterangan / Kendala": "Menunggu konfirmasi settlement EDC", "Status / Tindak Lanjut": 250000.0}
 ])
 edited_pending_df = st.data_editor(
     initial_pending_data,
