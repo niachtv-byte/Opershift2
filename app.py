@@ -345,11 +345,19 @@ def create_pdf():
     
     if not edited_pending_df.empty:
         for idx, row in edited_pending_df.reset_index(drop=True).iterrows():
-            nom = row.get("Status / Tindak Lanjut", 0.0)
+            try:
+                nom = float(row.iloc[-1]) if len(row) > 0 else 0.0
+                ket = str(row.iloc[-2]) if len(row) > 1 else ""
+                no_trx = str(row.iloc[-3]) if len(row) > 2 else ""
+            except:
+                nom = 0.0
+                ket = ""
+                no_trx = ""
+                
             pending_table_data.append([
                 str(idx + 1),
-                str(row.get("Nama / No RM", "")),
-                str(row.get("Keterangan / Kendala", "")),
+                no_trx,
+                ket,
                 f"Rp {nom:,.2f}"
             ])
         pending_table_data.append(["", "", "TOTAL NOMINAL DALAM PROSES", f"Rp {total_nominal_pending:,.2f}"])
