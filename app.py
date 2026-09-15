@@ -157,7 +157,7 @@ with st.container():
 
     with col2:
         st.subheader("💰 Transaksi Tunai (Rp)")
-        modal_awal = st.number_input("Saldo Awal Kas Shift (Modal)", value=1141700.0, step=50000.0)
+        modal_awal = st.number_input("Saldo Awal Kas Shift (Modal)", value=500000.0, step=50000.0)
         penerimaan_tunai = st.number_input("Penerimaan Tunai Pelayanan", value=penerimaan_tunai, step=10000.0)
         piutang_tunai = st.number_input("Pelunasan Piutang Tunai", value=0.0, step=10000.0)
         deposit_tunai = st.number_input("Penerimaan Deposit Tunai", value=0.0, step=10000.0)
@@ -198,17 +198,17 @@ st.subheader("💵 Input Pecahan Uang Fisik Kasir (Cash Count)")
 col_pec1, col_pec2, col_pec3, col_pec4 = st.columns(4)
 
 with col_pec1:
-    l100 = st.number_input("100.000 (Lembar)", min_value=0, value=8)
-    l50 = st.number_input("50.000 (Lembar)", min_value=0, value=6)
+    l100 = st.number_input("100.000 (Lembar)", min_value=0, value=1)
+    l50 = st.number_input("50.000 (Lembar)", min_value=0, value=1)
 with col_pec2:
     l20 = st.number_input("20.000 (Lembar)", min_value=0, value=2)
     l10 = st.number_input("10.000 (Lembar)", min_value=0, value=13)
 with col_pec3:
     l5 = st.number_input("5.000 (Lembar)", min_value=0, value=16)
-    l2 = st.number_input("2.000 (Lembar)", min_value=0, value=18)
+    l2 = st.number_input("2.000 (Lembar)", min_value=0, value=25)
 with col_pec4:
     l1 = st.number_input("1.000 (Lembar/Keping)", min_value=0, value=1)
-    logam = st.number_input("Total Uang Logam (Rp)", min_value=0.0, value=51700.0, step=100.0)
+    logam = st.number_input("Total Uang Logam (Rp)", min_value=0.0, value=49000.0, step=100.0)
 
 total_kas_seharusnya = modal_awal + total_tunai_netto
 total_uang_fisik = (l100 * 100000) + (l50 * 50000) + (l20 * 20000) + (l10 * 10000) + (l5 * 5000) + (l2 * 2000) + (l1 * 1000) + logam
