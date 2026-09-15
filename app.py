@@ -390,4 +390,22 @@ def create_pdf():
     t_sig = Table(sig_data, colWidths=[180, 180, 190])
     t_sig.setStyle(TableStyle([
         ('ALIGN', (0,0), (-1,-1), 'CENTER'),
-        ('FONTSIZE', (0,0), 
+        ('FONTSIZE', (0,0), (-1,-1),8),
+        ('FONTNAME',(0,0),(0,0),'Helvetica-Bold'),
+    ]))
+    elements.append(t_sig)
+    
+    doc.build(elements)
+    buffer.seek(0)
+    return buffer
+
+st.markdown("---")
+st.subheader("🖨️ Cetsk & Unduh Dokumen Closing")
+pdf_bytes=create_pdf()
+
+st.download_button(
+    label="📄 Unduh Form Closing Kasir (PDF)",
+    data=pdf_bytes,
+    file_name=f"Serah_Terims_Kasir_{tgl_shift}.pdf",
+    mime="application/pdf"
+)
