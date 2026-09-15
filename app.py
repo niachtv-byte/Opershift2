@@ -108,10 +108,6 @@ with st.container():
             df['is_admin_item'] = False
 
         if col_notx and col_notx in df.columns:
-            # Agregasi per Nomor Transaksi
-            # 1. Total transaksi utama diambil dari 'Total Transaksi' baris pertama unik tiap No. Transaksi
-            # 2. Total admin EDC/QRIS dijumlahkan dari baris item yang mengandung keyword admin edc/qris
-            
             trx_grouped_list = []
             for trx_id, group in df.groupby(col_notx):
                 if pd.isna(trx_id) or str(trx_id).strip() == '':
@@ -121,13 +117,11 @@ with st.container():
                 pasien_val = group[col_pasien].iloc[0] if col_pasien and col_pasien in group.columns else "-"
                 jenis_val = group[col_jenis].iloc[0] if col_jenis and col_jenis in group.columns else "-"
                 
-                # Ambil Total Transaksi (Bruto)
                 if col_total_trx and col_total_trx in group.columns:
                     bruto_val = clean_numeric(group[col_total_trx].iloc[0])
                 else:
                     bruto_val = float(group['clean_sub_item'].sum())
                 
-                # Jumlahkan admin EDC/QRIS khusus item terkait di transaksi ini
                 admin_val = float(group[group['is_admin_item']]['clean_sub_item'].sum())
                 netto_val = bruto_val - admin_val
                 
@@ -149,7 +143,6 @@ with st.container():
                     'clean_netto': 'Netto Setelah Potongan (Rp)'
                 })
 
-                # Hitung breakdown tunai dan non-tunai
                 cash_mask = df_grouped_final['Cara Bayar'].astype(str).str.upper().str.contains('CASH|TUNAI')
                 penerimaan_tunai = float(df_grouped_final[cash_mask]['clean_bersih'].sum())
                 
@@ -225,7 +218,7 @@ total_pendapatan_netto = total_tunai_netto + total_non_tunai_netto
 st.markdown("---")
 st.subheader("⏳ Transaksi / Tagihan Dalam Proses (Pending / Outstanding)")
 initial_pending_data = pd.DataFrame([
-    {"Nama / No RM": "TRX-00129", "Keterangan / Kendala": "Menunggu konfirmasi settlement EDC", "Status / Tindak Lanjut": 250000.0}
+    {"No. Transaksi / RM": "TRX-00129", "Keterangan / Kendala": "Menunggu konfirmasi settlement EDC", "Nominal (Rp)": 250000.0}
 ])
 edited_pending_df = st.data_editor(
     initial_pending_data,
@@ -235,7 +228,18 @@ edited_pending_df = st.data_editor(
         "Nominal (Rp)": st.column_config.NumberColumn(format="Rp %.2f", step=10000.0)
     }
 )
-total_nominal_pending = float(edited_pending_df["Nominal (Rp)"].sum()) if not edited_pending_df.empty else 0.0
+
+# Aman dari KeyError meskipun nama kolom diubah pada data_editor
+if not edited_pending_df.empty:
+    # Cari kolom yang berisi angka/nominal (biasanya kolom terakhir atau yang bertipe numerik)
+    numeric_cols = edited_pending_df.select_dtypes(include=['number']).columns
+    if len(numeric_cols) > 0:
+        total_nominal_pending = float(edited_pending_df[numeric_cols[0]].sum())
+    else:
+        # Fallback ambil kolom terakhir jika tipe datanya belum terdeteksi numerik otomatis
+        total_nominal_pending = float(pd.to_numeric(edited_pending_df.iloc[:, -1], errors='coerce').sum())
+else:
+    total_nominal_pending = 0.0
 
 st.markdown("---")
 st.subheader("📊 Hasil Rekonsiliasi Otomatis Shift")
@@ -341,10 +345,11 @@ def create_pdf():
     elements.append(Spacer(1, 10))
 
     elements.append(Paragraph("<b>3. TRANSAKSI / TAGIHAN DALAM PROSES (PENDING / OUTSTANDING)</b>", normal_bold))
-    pending_table_data = [["No.", "Nama / No RM", "Keterangan / Kendala", "Status / Tindak Lanjut"]]
+    pending_table_data = [["No.", "No. Transaksi / RM", "Keterangan / Kendala", "Nominal (Rp)"]]
     
     if not edited_pending_df.empty:
         for idx, row in edited_pending_df.reset_index(drop=True).iterrows():
+            # Ambil nilai secara aman dari kolom indeks ke-2 atau row terakhir jika diubah
             try:
                 nom = float(row.iloc[-1]) if len(row) > 0 else 0.0
                 ket = str(row.iloc[-2]) if len(row) > 1 else ""
