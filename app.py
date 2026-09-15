@@ -184,6 +184,23 @@ with st.container():
 if file_parsed and not df_display_clean.empty:
     with st.expander("🔍 Ringkasan Data Transaksi SIMRS (Fokus: Nominal, Admin, & Netto)", expanded=True):
         st.dataframe(df_display_clean, use_container_width=True)
+        
+        # --- TAMBAHAN KODE UNTUK TOTAL TUNAI & NON-TUNAI ---
+        if 'Cara Bayar' in df_grouped_final.columns:
+            cash_filter = df_grouped_final['Cara Bayar'].astype(str).str.upper().str.contains('CASH|TUNAI')
+            tot_tunai_simrs = float(df_grouped_final[cash_filter]['clean_bersih'].sum())
+            tot_nontunai_simrs = float(df_grouped_final[~cash_filter]['clean_bersih'].sum())
+            tot_admin_simrs = float(df_grouped_final['clean_admin'].sum())
+            
+            sc1, sc2, sc3 = st.columns(3)
+            with sc1:
+                st.metric("Total SIMRS Tunai", f"Rp {tot_tunai_simrs:,.2f}")
+            with sc2:
+                st.metric("Total SIMRS Non-Tunai", f"Rp {tot_nontunai_simrs:,.2f}")
+            with sc3:
+                st.metric("Total Admin EDC/QRIS", f"Rp {tot_admin_simrs:,.2f}")
+        # --------------------------------------------------
+
         csv_olahan = df_display_clean.to_csv(index=False).encode('utf-8')
         st.download_button(
             label="📥 Unduh Ringkasan SIMRS (CSV)",
