@@ -73,87 +73,84 @@ with st.container():
     df_grouped_final = pd.DataFrame()
     df_display_clean = pd.DataFrame()
 
-    # Processing SIMRS Data
+    # Processing SIMRS Data (Item-based / Multi-row format support)
     if file_parsed and df is not None:
         df.columns = [str(c).strip() for c in df.columns]
         
         cols_map = {str(c).strip().lower(): c for c in df.columns}
-        col_tgl = cols_map.get('tanggal') or cols_map.get('no. tanggal') or cols_map.get('tgl_transaksi')
-        col_notx = cols_map.get('no.rawat/no.nota') or cols_map.get('no. rawat/no. nota') or cols_map.get('no_rawat') or cols_map.get('no. transaksi')
+        col_tgl = cols_map.get('tanggal transaksi') or cols_map.get('tanggal') or cols_map.get('tgl_transaksi')
+        col_notx = cols_map.get('no. transaksi') or cols_map.get('no.rawat/no.nota') or cols_map.get('no_rawat')
         col_pasien = cols_map.get('nama pasien') or cols_map.get('pasien')
-        col_jenis = cols_map.get('jenis/cara bayar') or cols_map.get('jenis pembayaran') or cols_map.get('metode pembayaran')
-        col_bersih = cols_map.get('pendapatan bersih') or cols_map.get('total transaksi') or cols_map.get('nominal')
-
-        # Deteksi kolom admin: prioritas pencarian keyword, atau cek kolom di sebelah kanan
-        col_admin = None
-        for c_low, c_orig in cols_map.items():
-            if any(k in c_low for k in ['admin', 'fee', 'edc', 'qris', 'qr', 'potongan']):
-                col_admin = c_orig
-        
-        if not col_admin and len(df.columns) > 0:
-            for c_orig in reversed(df.columns[-3:]):
-                c_low = str(c_orig).strip().lower()
-                if c_low not in ['tanggal', 'nama pasien', 'pasien', 'no.rawat/no.nota']:
-                    col_admin = c_orig
-                    break
+        col_jenis = cols_map.get('jenis pembayaran') or cols_map.get('jenis/cara bayar') or cols_map.get('metode pembayaran')
+        col_total_trx = cols_map.get('total transaksi') or cols_map.get('pendapatan bersih') or cols_map.get('subtotal after discount')
+        col_item_name = cols_map.get('nama item') or cols_map.get('item')
+        col_sub_item = cols_map.get('subtotal item') or cols_map.get('subtotal') or cols_map.get('harga satuan item')
 
         def clean_numeric(val):
             if pd.isna(val): return 0.0
+            if isinstance(val, (int, float)): return float(val)
             val_str = str(val).replace('.', '').replace(',', '.')
             try:
                 return float(val_str)
             except:
                 return 0.0
 
-        if col_bersih and col_bersih in df.columns:
-            df['clean_bersih'] = df[col_bersih].apply(clean_numeric)
+        if col_sub_item and col_sub_item in df.columns:
+            df['clean_sub_item'] = df[col_sub_item].apply(clean_numeric)
         else:
-            df['clean_bersih'] = 0.0
-            
-        if col_admin and col_admin in df.columns:
-            df['clean_admin'] = df[col_admin].apply(clean_numeric)
-            st.sidebar.info(f"🔍 Kolom Admin terdeteksi: **{col_admin}**")
+            df['clean_sub_item'] = 0.0
+
+        # Identifikasi baris admin EDC / QRIS / QR secara spesifik berdasarkan item name
+        if col_item_name and col_item_name in df.columns:
+            admin_mask = df[col_item_name].astype(str).str.lower().str.contains('admin edc|admin qris|admin qr|edc|qris', na=False)
+            df['is_admin_item'] = admin_mask
         else:
-            df['clean_admin'] = 0.0
+            df['is_admin_item'] = False
 
         if col_notx and col_notx in df.columns:
-            df_valid = df[df[col_notx].astype(str).str.strip().ne('') & df[col_notx].notna()].copy()
-            footer_keywords = ['total', 'jumlah', 'grand']
-            for kw in footer_keywords:
-                df_valid = df_valid[~df_valid[col_notx].astype(str).str.lower().str.contains(kw, na=False)]
-        else:
-            df_valid = df.copy()
-
-        if not df_valid.empty:
-            group_col = col_notx if col_notx and col_notx in df_valid.columns else df_valid.columns[0]
+            # Agregasi per Nomor Transaksi
+            # 1. Total transaksi utama diambil dari 'Total Transaksi' baris pertama unik tiap No. Transaksi
+            # 2. Total admin EDC/QRIS dijumlahkan dari baris item yang mengandung keyword admin edc/qris
             
-            agg_dict = {
-                'clean_bersih': 'first',
-                'clean_admin': 'sum'
-            }
-            if col_tgl and col_tgl in df_valid.columns:
-                agg_dict[col_tgl] = 'first'
-            if col_pasien and col_pasien in df_valid.columns:
-                agg_dict[col_pasien] = 'first'
-            if col_jenis and col_jenis in df_valid.columns:
-                agg_dict[col_jenis] = 'first'
+            trx_grouped_list = []
+            for trx_id, group in df.groupby(col_notx):
+                if pd.isna(trx_id) or str(trx_id).strip() == '':
+                    continue
+                
+                tgl_val = group[col_tgl].iloc[0] if col_tgl and col_tgl in group.columns else "-"
+                pasien_val = group[col_pasien].iloc[0] if col_pasien and col_pasien in group.columns else "-"
+                jenis_val = group[col_jenis].iloc[0] if col_jenis and col_jenis in group.columns else "-"
+                
+                # Ambil Total Transaksi (Bruto)
+                if col_total_trx and col_total_trx in group.columns:
+                    bruto_val = clean_numeric(group[col_total_trx].iloc[0])
+                else:
+                    bruto_val = float(group['clean_sub_item'].sum())
+                
+                # Jumlahkan admin EDC/QRIS khusus item terkait di transaksi ini
+                admin_val = float(group[group['is_admin_item']]['clean_sub_item'].sum())
+                netto_val = bruto_val - admin_val
+                
+                trx_grouped_list.append({
+                    'No. Transaksi': trx_id,
+                    'Tanggal': tgl_val,
+                    'Nama Pasien': pasien_val,
+                    'Cara Bayar': jenis_val,
+                    'clean_bersih': bruto_val,
+                    'clean_admin': admin_val,
+                    'clean_netto': netto_val
+                })
+            
+            if trx_grouped_list:
+                df_grouped_final = pd.DataFrame(trx_grouped_list)
+                df_display_clean = df_grouped_final[['No. Transaksi', 'Tanggal', 'Nama Pasien', 'Cara Bayar', 'clean_bersih', 'clean_admin', 'clean_netto']].rename(columns={
+                    'clean_bersih': 'Nominal (Rp)',
+                    'clean_admin': 'Admin EDC/QRIS (Rp)',
+                    'clean_netto': 'Netto Setelah Potongan (Rp)'
+                })
 
-            df_grouped_final = df_valid.groupby(group_col, as_index=False).agg(agg_dict)
-            df_grouped_final['clean_netto'] = df_grouped_final['clean_bersih'] - df_grouped_final['clean_admin']
-
-            display_cols = {}
-            if col_notx: display_cols[col_notx] = "No. Transaksi"
-            if col_tgl: display_cols[col_tgl] = "Tanggal"
-            if col_pasien: display_cols[col_pasien] = "Nama Pasien"
-            if col_jenis: display_cols[col_jenis] = "Cara Bayar"
-            display_cols['clean_bersih'] = "Nominal (Rp)"
-            display_cols['clean_admin'] = f"Admin ({col_admin if col_admin else 'EDC/QRIS'}) (Rp)"
-            display_cols['clean_netto'] = "Netto Setelah Potongan (Rp)"
-
-            df_display_clean = df_grouped_final[list(display_cols.keys())].rename(columns=display_cols)
-
-            if col_jenis and col_jenis in df_grouped_final.columns:
-                cash_mask = df_grouped_final[col_jenis].astype(str).str.upper().str.contains('CASH|TUNAI')
+                # Hitung breakdown tunai dan non-tunai
+                cash_mask = df_grouped_final['Cara Bayar'].astype(str).str.upper().str.contains('CASH|TUNAI')
                 penerimaan_tunai = float(df_grouped_final[cash_mask]['clean_bersih'].sum())
                 
                 nontunai_mask = ~cash_mask
@@ -161,8 +158,9 @@ with st.container():
                 total_biaya_admin = float(df_grouped_final['clean_admin'].sum())
                 
                 st.sidebar.success(f"📊 Auto-rekap berhasil: {len(df_grouped_final)} transaksi unik terbaca.")
+                st.sidebar.info(f"🔍 Total Admin EDC/QRIS terdeteksi: Rp {total_biaya_admin:,.2f}")
         else:
-            st.sidebar.warning("⚠️ Data transaksi valid tidak ditemukan dalam file SIMRS.")
+            st.sidebar.warning("⚠️ Kolom No. Transaksi tidak ditemukan dalam file SIMRS.")
 
     with col2:
         st.subheader("💰 Transaksi Tunai (Rp)")
@@ -390,8 +388,8 @@ def create_pdf():
     t_sig = Table(sig_data, colWidths=[180, 180, 190])
     t_sig.setStyle(TableStyle([
         ('ALIGN', (0,0), (-1,-1), 'CENTER'),
-        ('FONTSIZE', (0,0), (-1,-1),8),
-        ('FONTNAME',(0,0),(0,0),'Helvetica-Bold'),
+        ('FONTSIZE', (0,0), (-1,-1), 8),
+        ('FONTNAME', (0,0), (0,0), 'Helvetica-Bold'),
     ]))
     elements.append(t_sig)
     
@@ -400,12 +398,12 @@ def create_pdf():
     return buffer
 
 st.markdown("---")
-st.subheader("🖨️ Cetsk & Unduh Dokumen Closing")
-pdf_bytes=create_pdf()
+st.subheader("🖨️ Cetak & Unduh Dokumen Closing")
+pdf_bytes = create_pdf()
 
 st.download_button(
     label="📄 Unduh Form Closing Kasir (PDF)",
     data=pdf_bytes,
-    file_name=f"Serah_Terims_Kasir_{tgl_shift}.pdf",
+    file_name=f"Serah_Terima_Kasir_{tgl_shift}.pdf",
     mime="application/pdf"
 )
