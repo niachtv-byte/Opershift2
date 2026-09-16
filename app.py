@@ -493,23 +493,23 @@ pernyataan_text = "Kas, dokumen, dan informasi transaksi shift telah diperiksa d
 elements.append(Paragraph(pernyataan_text, normal_style))
 elements.append(Spacer(1, 15))
     
-    pj_name = pj_kasir if pj_kasir.strip() != "" else " ( .................................... ) "
-    sig_data = [
-        ["Petugas Shift Lama (Menyerahkan)", "Petugas Shift Baru (Menerima)", "Mengetahui (Penanggung Jawab Kasir)"],
-        ["\n\n\n________________________", "\n\n\n________________________", "\n\n\n________________________"],
-        [petugas_lama, petugas_baru, pj_name]
-    ]
-    t_sig = Table(sig_data, colWidths=[180, 180, 190])
-    t_sig.setStyle(TableStyle([
-        ('ALIGN', (0,0), (-1,-1), 'CENTER'),
-        ('FONTSIZE', (0,0), (-1,-1), 8),
-        ('FONTNAME', (0,0), (0,0), 'Helvetica-Bold'),
-    ]))
-    elements.append(t_sig)
+pj_name = pj_kasir if pj_kasir.strip() != "" else " ( .................................... ) "
+sig_data = [
+     ["Petugas Shift Lama (Menyerahkan)", "Petugas Shift Baru (Menerima)", "Mengetahui (Penanggung Jawab Kasir)"],
+     ["\n\n\n________________________", "\n\n\n________________________", "\n\n\n________________________"],
+     [petugas_lama, petugas_baru, pj_name]
+]
+t_sig = Table(sig_data, colWidths=[180, 180, 190])
+t_sig.setStyle(TableStyle([
+      ('ALIGN', (0,0), (-1,-1), 'CENTER'),
+      ('FONTSIZE', (0,0), (-1,-1), 8),
+      ('FONTNAME', (0,0), (0,0), 'Helvetica-Bold'),
+]))
+elements.append(t_sig)
     
-    doc.build(elements)
-    buffer.seek(0)
-    return buffer
+doc.build(elements)
+buffer.seek(0)
+return buffer
 
 st.markdown("---")
 st.subheader("🖨️ Cetak & Unduh Dokumen Closing")
