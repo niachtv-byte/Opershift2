@@ -2,7 +2,7 @@ import streamlit as st
 import pandas as pd
 import datetime
 import io
-from reportlab.lib.pagesizes import A4
+from reportlab.lib.pagesizes import A4, letter
 from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle, HRFlowable
 from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
 from reportlab.lib import colors
@@ -79,7 +79,7 @@ with st.container():
     df_grouped_final = pd.DataFrame()
     df_display_clean = pd.DataFrame()
 
-    # Processing SIMRS Data (Item-based / Multi-row format support)
+    # Processing SIMRS Data
     if file_parsed and df is not None:
         df.columns = [str(c).strip() for c in df.columns]
         
@@ -106,7 +106,6 @@ with st.container():
         else:
             df['clean_sub_item'] = 0.0
 
-        # Identifikasi baris admin EDC / QRIS / QR secara spesifik berdasarkan item name
         if col_item_name and col_item_name in df.columns:
             admin_mask = df[col_item_name].astype(str).str.lower().str.contains('admin edc|admin qris|admin qr|edc|qris', na=False)
             df['is_admin_item'] = admin_mask
@@ -155,11 +154,6 @@ with st.container():
                 nontunai_mask = ~cash_mask
                 total_non_tunai_bruto = float(df_grouped_final[nontunai_mask]['clean_bersih'].sum())
                 total_biaya_admin = float(df_grouped_final['clean_admin'].sum())
-                
-                st.sidebar.success(f"📊 Auto-rekap berhasil: {len(df_grouped_final)} transaksi unik terbaca.")
-                st.sidebar.info(f"🔍 Total Admin EDC/QRIS terdeteksi: Rp {total_biaya_admin:,.2f}")
-        else:
-            st.sidebar.warning("⚠️ Kolom No. Transaksi tidak ditemukan dalam file SIMRS.")
 
     with col2:
         st.subheader("💰 Transaksi Tunai (Rp)")
@@ -170,7 +164,7 @@ with st.container():
         refund_tunai = st.number_input("Dikurangi: Refund Tunai", value=0.0, step=10000.0)
         
         total_tunai_netto = penerimaan_tunai + piutang_tunai + deposit_tunai - refund_tunai
-        st.success(f" Total Netto Tunai: **Rp {total_tunai_netto:,.2f}**")
+        st.success(f"Total Netto Tunai: **Rp {total_tunai_netto:,.2f}**")
 
     with col3:
         st.subheader("💳 Transaksi Non-Tunai (Rp)")
@@ -182,16 +176,13 @@ with st.container():
         
         total_nontunai_bruto_all = penerimaan_nontunai_pelayanan + piutang_nontunai + deposit_nontunai - refund_nontunai
         total_non_tunai_netto = total_nontunai_bruto_all - total_biaya_admin
-        st.info(f" Total Netto Non-Tunai: **Rp {total_non_tunai_netto:,.2f}**")
+        st.info(f"Total Netto Non-Tunai: **Rp {total_non_tunai_netto:,.2f}**")
 
-# ==========================================
-# MODUL RINGKASAN DATA OLAHAN SIMRS
-# ==========================================
+# Ringkasan SIMRS
 if file_parsed and not df_display_clean.empty:
-    with st.expander("🔍 Ringkasan Data Transaksi SIMRS (Fokus: Nominal, Admin, & Netto)", expanded=True):
+    with st.expander("🔍 Ringkasan Data Transaksi SIMRS", expanded=True):
         st.dataframe(df_display_clean, use_container_width=True)
         
-        # --- TAMBAHAN KODE UNTUK TOTAL TUNAI & NON-TUNAI ---
         if 'Cara Bayar' in df_grouped_final.columns:
             cash_filter = df_grouped_final['Cara Bayar'].astype(str).str.upper().str.contains('CASH|TUNAI')
             tot_tunai_simrs = float(df_grouped_final[cash_filter]['clean_bersih'].sum())
@@ -205,64 +196,15 @@ if file_parsed and not df_display_clean.empty:
                 st.metric("Total SIMRS Non-Tunai", f"Rp {tot_nontunai_simrs:,.2f}")
             with sc3:
                 st.metric("Total Admin EDC/QRIS", f"Rp {tot_admin_simrs:,.2f}")
-        # --------------------------------------------------
 
-        # --- UBAH MENJADI FORMAT EXCEL (.xlsx) DENGAN TOTAL TUNAI & NON-TUNAI TERPISAH ---
-        import io
-        
         output = io.BytesIO()
         with pd.ExcelWriter(output, engine='openpyxl') as writer:
-            # Tulis data utama ke sheet Excel
             df_display_clean.to_excel(writer, index=False, sheet_name='Ringkasan SIMRS')
-            
-            # Ambil worksheet untuk menambahkan baris total terpisah
-            worksheet = writer.sheets['Ringkasan SIMRS']
-            
-            # Tentukan baris awal untuk total (berjarak 2 baris dari data terakhir)
-            start_row = len(df_display_clean) + 3
-            
-            # Hitung total khusus Tunai & Non-Tunai dari df_grouped_final jika ada
-            if 'Cara Bayar' in df_grouped_final.columns:
-                cash_filter = df_grouped_final['Cara Bayar'].astype(str).str.upper().str.contains('CASH|TUNAI')
-                
-                tunai_nominal = float(df_grouped_final[cash_filter]['clean_bersih'].sum())
-                tunai_admin = float(df_grouped_final[cash_filter]['clean_admin'].sum())
-                tunai_netto = tunai_nominal - tunai_admin
-                
-                nontunai_nominal = float(df_grouped_final[~cash_filter]['clean_bersih'].sum())
-                nontunai_admin = float(df_grouped_final[~cash_filter]['clean_admin'].sum())
-                nontunai_netto = nontunai_nominal - nontunai_admin
-            else:
-                tunai_nominal, tunai_admin, tunai_netto = 0, 0, 0
-                nontunai_nominal, nontunai_admin, nontunai_netto = 0, 0, 0
-
-            # Baris 1: Total Tunai
-            worksheet.cell(row=start_row, column=1, value="TOTAL TUNAI")
-            try:
-                worksheet.cell(row=start_row, column=5, value=tunai_nominal)
-                worksheet.cell(row=start_row, column=6, value=tunai_admin)
-                worksheet.cell(row=start_row, column=7, value=tunai_netto)
-            except:
-                pass
-                
-            # Baris 2: Total Non-Tunai
-            row_nontunai = start_row + 1
-            worksheet.cell(row=row_nontunai, column=1, value="TOTAL NON-TUNAI")
-            try:
-                worksheet.cell(row=row_nontunai, column=5, value=nontunai_nominal)
-                worksheet.cell(row=row_nontunai, column=6, value=nontunai_admin)
-                worksheet.cell(row=row_nontunai, column=7, value=nontunai_netto)
-            except:
-                pass
-                
         excel_data = output.getvalue()
 
-        # SIMPAN KE SESSION STATE UNTUK FORM CLOSING HARIAN
-        st.session_state['simrs_tunai'] = float(tunai_netto)
-        st.session_state['simrs_nontunai'] = float(nontunai_netto)
-        st.session_state['simrs_piutang_tunai'] = 0.0  # Sesuaikan jika ada variabel piutang
-        st.session_state['simrs_deposit_tunai'] = 0.0 # Sesuaikan jika ada variabel deposit
-        st.session_state['simrs_refund_tunai'] = 0.0  # Sesuaikan jika ada variabel refund
+        st.session_state['simrs_tunai_pelayanan'] = penerimaan_tunai
+        st.session_state['simrs_nontunai_brutto'] = total_non_tunai_bruto
+        st.session_state['simrs_nontunai_admin'] = total_biaya_admin
 
         st.download_button(
             label="📥 Unduh Ringkasan SIMRS (XLSX)",
@@ -271,28 +213,29 @@ if file_parsed and not df_display_clean.empty:
             mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
         )
 
-# Cash Breakdown & Calculations
+# Cash Breakdown
 st.markdown("---")
 st.subheader("💵 Input Pecahan Uang Fisik Kasir (Cash Count)")
 col_pec1, col_pec2, col_pec3, col_pec4 = st.columns(4)
 
 with col_pec1:
-    l100 = st.number_input("100.000 (Lembar)", min_value=0, value=1)
-    l50 = st.number_input("50.000 (Lembar)", min_value=0, value=1)
+    l100 = st.number_input("100.000 (Lembar)", min_value=0, value=1, key="l100_s1")
+    l50 = st.number_input("50.000 (Lembar)", min_value=0, value=1, key="l50_s1")
 with col_pec2:
-    l20 = st.number_input("20.000 (Lembar)", min_value=0, value=2)
-    l10 = st.number_input("10.000 (Lembar)", min_value=0, value=13)
+    l20 = st.number_input("20.000 (Lembar)", min_value=0, value=2, key="l20_s1")
+    l10 = st.number_input("10.000 (Lembar)", min_value=0, value=13, key="l10_s1")
 with col_pec3:
-    l5 = st.number_input("5.000 (Lembar)", min_value=0, value=16)
-    l2 = st.number_input("2.000 (Lembar)", min_value=0, value=25)
+    l5 = st.number_input("5.000 (Lembar)", min_value=0, value=16, key="l5_s1")
+    l2 = st.number_input("2.000 (Lembar)", min_value=0, value=25, key="l2_s1")
 with col_pec4:
-    l1 = st.number_input("1.000 (Lembar/Keping)", min_value=0, value=1)
-    logam = st.number_input("Total Uang Logam (Rp)", min_value=0.0, value=49000.0, step=100.0)
+    l1 = st.number_input("1.000 (Lembar/Keping)", min_value=0, value=1, key="l1_s1")
+    logam = st.number_input("Total Uang Logam (Rp)", min_value=0.0, value=49000.0, step=100.0, key="logam_s1")
 
 total_kas_seharusnya = modal_awal + total_tunai_netto
 total_uang_fisik = (l100 * 100000) + (l50 * 50000) + (l20 * 20000) + (l10 * 10000) + (l5 * 5000) + (l2 * 2000) + (l1 * 1000) + logam
 selisih_kas = total_uang_fisik - total_kas_seharusnya
 total_pendapatan_netto = total_tunai_netto + total_non_tunai_netto
+status_selisih = "PAS / SESUAI" if selisih_kas == 0 else ("LEBIH" if selisih_kas > 0 else "KURANG")
 
 st.markdown("---")
 st.subheader("⏳ Transaksi / Tagihan Dalam Proses (Pending / Outstanding)")
@@ -306,47 +249,18 @@ initial_pending_data = pd.DataFrame([
 edited_pending_df = st.data_editor(
     initial_pending_data,
     num_rows="dynamic",
-    use_container_width=True,
-    column_config={
-        "Nominal (Rp)": st.column_config.NumberColumn(format="Rp %.2f", step=10000.0)
-    }
+    use_container_width=True
 )
-
-# Aman dari KeyError meskipun nama kolom diubah pada data_editor
-if not edited_pending_df.empty:
-    # Cari kolom yang berisi angka/nominal (biasanya kolom terakhir atau yang bertipe numerik)
-    numeric_cols = edited_pending_df.select_dtypes(include=['number']).columns
-    if len(numeric_cols) > 0:
-        total_nominal_pending = float(edited_pending_df[numeric_cols[0]].sum())
-    else:
-        # Fallback ambil kolom terakhir jika tipe datanya belum terdeteksi numerik otomatis
-        total_nominal_pending = float(pd.to_numeric(edited_pending_df.iloc[:, -1], errors='coerce').sum())
-else:
-    total_nominal_pending = 0.0
-
-st.markdown("---")
-st.subheader("📊 Hasil Rekonsiliasi Otomatis Shift")
-m_col1, m_col2, m_col3, m_col4 = st.columns(4)
-with m_col1:
-    st.metric(label="Total Kas Fisik (Modal+Tunai)", value=f"Rp {total_kas_seharusnya:,.2f}")
-with m_col2:
-    st.metric(label="Uang Tunai Aktual (Brankas)", value=f"Rp {total_uang_fisik:,.2f}")
-with m_col3:
-    status_selisih = "PAS / SESUAI" if selisih_kas == 0 else ("LEBIH" if selisih_kas > 0 else "KURANG")
-    st.metric(label=f"Selisih Kas ({status_selisih})", value=f"Rp {selisih_kas:,.2f}")
-with m_col4:
-    st.metric(label="Total Admin EDC / QRIS", value=f"Rp {total_biaya_admin:,.2f}")
 
 st.markdown("---")
 st.subheader("📝 Catatan Tambahan Kasir")
-catatan_tambahan = st.text_area("Catatan Tambahan", "Uang lebih Rp 22 karena pasien tidak mau menerima kembalian")
+catatan_tambahan = st.text_area("Catatan Tambahan", "Uang lebih Rp 22 karena pasien tidak mau menerima kembalian", key="catatan_s1")
 
-# Generate PDF function
+# Fungsi Generate PDF Shift Utama
 def create_pdf(petugas_lama, petugas_baru, pj_kasir, catatan_tambahan, edited_pending_df):
     buffer = io.BytesIO()
     doc = SimpleDocTemplate(buffer, pagesize=letter)
-    elements = []
-    styles = getSampleStyleSheet() # Pastikan baris ini ada di dalam fungsi setelah def
+    styles = getSampleStyleSheet()
     
     title_style = ParagraphStyle('TitleStyle', parent=styles['Heading1'], fontName='Helvetica-Bold', fontSize=14, alignment=1, spaceAfter=2)
     subtitle_style = ParagraphStyle('SubTitleStyle', parent=styles['Normal'], fontName='Helvetica', fontSize=10, alignment=1, spaceAfter=10)
@@ -431,34 +345,30 @@ def create_pdf(petugas_lama, petugas_baru, pj_kasir, catatan_tambahan, edited_pe
     elements.append(Paragraph("<b>3. TRANSAKSI / TAGIHAN DALAM PROSES (PENDING / OUTSTANDING)</b>", normal_bold))
     pending_table_data = [["No.", "Nama / No RM", "Keterangan / Kendala", "Status / Tindak Lanjut"]]
     
-    if not edited_pending_df.empty:
-        # Definisikan style paragraf untuk tabel agar teks bisa otomatis turun (wrap)
-        from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
-        styles = getSampleStyleSheet()
-        table_text_style = ParagraphStyle(
-            'TableTextCustom',
-            parent=styles['Normal'],
-            fontSize=8,
-            leading=10
+    table_text_style = ParagraphStyle(
+        'TableTextCustom',
+        parent=styles['Normal'],
+        fontSize=8,
+        leading=10
     )
 
-    for idx, row in edited_pending_df.reset_index(drop=True).iterrows():
-        try:
-            nama_orm = str(row.iloc[0]) if len(row) > 0 else ""
-            ket = str(row.iloc[1]) if len(row) > 1 else ""
-            status_tindakan = str(row.iloc[2]) if len(row) > 2 else ""
-        except:
-            nama_orm = ""
-            ket = ""
-            status_tindakan = ""
-        
-        # BUNGKUS DENGAN PARAGRAPH AGAR TEKS OTOMATIS TURUN KE BAWAH
-        pending_table_data.append([
-            str(idx + 1),
-            Paragraph(nama_orm, table_text_style),
-            Paragraph(ket, table_text_style),
-            status_tindakan
-        ])
+    if not edited_pending_df.empty:
+        for idx, row in edited_pending_df.reset_index(drop=True).iterrows():
+            try:
+                nama_orm = str(row.iloc[0]) if len(row) > 0 else ""
+                ket = str(row.iloc[1]) if len(row) > 1 else ""
+                status_tindakan = str(row.iloc[2]) if len(row) > 2 else ""
+            except:
+                nama_orm = ""
+                ket = ""
+                status_tindakan = ""
+            
+            pending_table_data.append([
+                str(idx + 1),
+                Paragraph(nama_orm, table_text_style),
+                Paragraph(ket, table_text_style),
+                status_tindakan
+            ])
     else:
         pending_table_data.append(["-", "Tidak ada transaksi pending", "-", "-"])
 
@@ -477,8 +387,6 @@ def create_pdf(petugas_lama, petugas_baru, pj_kasir, catatan_tambahan, edited_pe
     elements.append(t_pending)
     elements.append(Spacer(1, 10))
     
-    # Buat style khusus catatan agar bisa terbungkus rapi
-    from reportlab.lib.styles import ParagraphStyle
     catatan_style = ParagraphStyle(
         'CatatanStylePdf', 
         parent=normal_style, 
@@ -486,7 +394,6 @@ def create_pdf(petugas_lama, petugas_baru, pj_kasir, catatan_tambahan, edited_pe
         leading=10
     )
 
-# Gunakan style tersebut pada Paragraph Catatan Kasir
     elements.append(Paragraph(f"<b>Catatan Kasir:</b> {catatan_tambahan}", catatan_style))
     elements.append(Spacer(1, 10))
 
@@ -513,31 +420,32 @@ def create_pdf(petugas_lama, petugas_baru, pj_kasir, catatan_tambahan, edited_pe
     doc.build(elements)
     buffer.seek(0)
     return buffer
-st.markdown("---")
-st.subheader("🖨️ Cetak & Unduh Dokumen Closing")
-pdf_bytes = create_pdf(
-    petugas_lama=st.session_state.get('petugas_lama', ''),
-    petugas_baru=st.session_state.get('petugas_baru', ''),
-    pj_kasir=st.session_state.get('pj_kasir', ''),
-    catatan_tambahan=st.session_state.get('catatan_tambahan', ''),
-    edited_pending_df=st.session_state.get('edited_pending_df', pd.DataFrame())
-)
 
-st.download_button(
-    label="📄 Unduh Form Closing Kasir (PDF)",
-    data=pdf_bytes,
-    file_name=f"Serah_Terima_Kasir_{tgl_shift}.pdf",
-    mime="application/pdf"
-)
+# Konten Tampil Kondisional Menu Pilihan Sidebar
+if menu_pilihan == "Serah Terima Shift":
+    st.markdown("---")
+    st.subheader("🖨️ Cetak & Unduh Dokumen Serah Terima Shift")
+    pdf_bytes = create_pdf(
+        petugas_lama=petugas_lama,
+        petugas_baru=petugas_baru,
+        pj_kasir=pj_kasir,
+        catatan_tambahan=catatan_tambahan,
+        edited_pending_df=edited_pending_df
+    )
+
+    st.download_button(
+        label="📄 Unduh Form Serah Terima Shift (PDF)",
+        data=pdf_bytes,
+        file_name=f"Serah_Terima_Shift_{tgl_shift}.pdf",
+        mime="application/pdf"
+    )
+
 # --- FORM CLOSING HARIAN TAMBAHAN DI BAGIAN BAWAH ---
-if menu_pilihan == "Closing Harian / Tutup Shift":
+elif menu_pilihan == "Closing Harian / Tutup Shift":
     st.title("📑 Form Closing Harian & Tutup Shift Kasir")
     st.markdown("Form pendapatan otomatis dari tarikan SIMRS, dilengkapi rincian pecahan uang fisik.")
 
-    # Ambil data otomatis dari session state hasil SIMRS
     default_tunai_pelayanan = st.session_state.get('simrs_tunai_pelayanan', 0.0)
-    
-    # PERHATIKAN INI: Perbaiki nama variabel berikut agar sesuai dengan data session state Anda
     default_piutang_t = st.session_state.get('simrs_piutang_tunai', 0.0)
     default_deposit_t = st.session_state.get('simrs_deposit_tunai', 0.0)
     default_refund_t = st.session_state.get('simrs_refund_tunai', 0.0)
@@ -558,20 +466,20 @@ if menu_pilihan == "Closing Harian / Tutup Shift":
         c1, c2 = st.columns(2)
         with c1:
             st.markdown("##### Sisi Tunai")
-            # Menggunakan variabel default yang sudah diperbaiki namanya di atas
-            penerimaan_tunai = st.number_input("Penerimaan Tunai Pelayanan (Rp)", min_value=0.0, value=default_tunai_pelayanan, step=1000.0)
-            piutang_tunai = st.number_input("Pembayaran Piutang Tunai (Rp)", min_value=0.0, value=default_piutang_t, step=1000.0)
-            deposit_tunai = st.number_input("Penerimaan Deposit Tunai (Rp)", min_value=0.0, value=default_deposit_t, step=1000.0)
-            refund_tunai = st.number_input("Pengembalian / Refund Tunai (Rp)", min_value=0.0, value=default_refund_t, step=1000.0)
+            penerimaan_tunai_c = st.number_input("Penerimaan Tunai Pelayanan (Rp)", min_value=0.0, value=default_tunai_pelayanan, step=1000.0)
+            piutang_tunai_c = st.number_input("Pembayaran Piutang Tunai (Rp)", min_value=0.0, value=default_piutang_t, step=1000.0)
+            deposit_tunai_c = st.number_input("Penerimaan Deposit Tunai (Rp)", min_value=0.0, value=default_deposit_t, step=1000.0)
+            refund_tunai_c = st.number_input("Pengembalian / Refund Tunai (Rp)", min_value=0.0, value=default_refund_t, step=1000.0)
             
         with c2:
             st.markdown("##### Sisi Non-Tunai")
-            penerimaan_nontunai = st.number_input("Penerimaan Non-Tunai (QRIS/EDC) (Rp)", min_value=0.0, value=default_nontunai_brutto, step=1000.0)
-            biaya_admin = st.number_input("Biaya Admin EDC/QRIS (Rp)", min_value=0.0, value=default_nontunai_admin, step=1000.0)
+            penerimaan_nontunai_c = st.number_input("Penerimaan Non-Tunai (QRIS/EDC) (Rp)", min_value=0.0, value=default_nontunai_brutto, step=1000.0)
+            biaya_admin_c = st.number_input("Biaya Admin EDC/QRIS (Rp)", min_value=0.0, value=default_nontunai_admin, step=1000.0)
+            piutang_nontunai_c = st.number_input("Pembayaran Piutang Non-Tunai (Rp)", min_value=0.0, value=0.0, step=1000.0)
+            deposit_nontunai_c = st.number_input("Penerimaan Deposit Non-Tunai (Rp)", min_value=0.0, value=0.0, step=1000.0)
             
-            # Total Non-Tunai Bersih terhitung otomatis
-            total_nontunai_bersih = penerimaan_nontunai - biaya_admin
-            st.info(f"**Total Non-Tunai Netto:** Rp {total_nontunai_bersih:,.2f}")
+            total_nontunai_bersih_c = penerimaan_nontunai_c - biaya_admin_c
+            st.info(f"**Total Non-Tunai Netto:** Rp {total_nontunai_bersih_c:,.2f}")
 
         st.subheader("2. Rincian Pecahan Uang Tunai Fisik")
         col_f1, col_f2, col_f3, col_f4 = st.columns(4)
@@ -586,16 +494,17 @@ if menu_pilihan == "Closing Harian / Tutup Shift":
             l_2k = st.number_input("Lembar 2.000", min_value=0, value=0, step=1)
         with col_f4:
             l_1k = st.number_input("Lembar 1.000", min_value=0, value=0, step=1)
-            logam = st.number_input("Total Koin / Logam (Rp)", min_value=0.0, value=0.0, step=500.0)
+            logam_c = st.number_input("Total Koin / Logam (Rp)", min_value=0.0, value=0.0, step=500.0)
 
         catatan_closing = st.text_area("Catatan Tambahan", placeholder="Tuliskan catatan atau kendala jika ada...")
-        submitted_closing = st.form_submit_button("Generate Laporan Closing PDF")
+        submitted_closing = st.form_submit_button("Hitung & Buat Laporan Closing")
 
     if submitted_closing:
-        total_tunai_sebelum = penerimaan_tunai + piutang_tunai + deposit_tunai - refund_tunai
-        total_nontunai_bersih = penerimaan_nontunai + piutang_nontunai + deposit_nontunai - biaya_admin
-        total_fisik = (l_100k * 100000) + (l_50k * 50000) + (l_20k * 20000) + (l_10k * 10000) + (l_5k * 5000) + (l_2k * 2000) + (l_1k * 1000) + logam
+        total_tunai_sebelum = penerimaan_tunai_c + piutang_tunai_c + deposit_tunai_c - refund_tunai_c
+        total_nontunai_bersih_val = penerimaan_nontunai_c + piutang_nontunai_c + deposit_nontunai_c - biaya_admin_c
+        total_fisik = (l_100k * 100000) + (l_50k * 50000) + (l_20k * 20000) + (l_10k * 10000) + (l_5k * 5000) + (l_2k * 2000) + (l_1k * 1000) + logam_c
         selisih_fisik = total_fisik - total_tunai_sebelum
+        status_selisih_c = "PAS / SESUAI" if selisih_fisik == 0 else ("LEBIH" if selisih_fisik > 0 else "KURANG")
 
         st.success("Data Closing berhasil dihitung! Silakan unduh PDF di bawah ini:")
 
@@ -621,20 +530,19 @@ if menu_pilihan == "Closing Harian / Tutup Shift":
             elements.append(t_meta)
             elements.append(Spacer(1, 10))
 
-            # Tabel Pendapatan (Menggunakan Paragraph agar tag <b> terbaca rapi)
             tabel_pendapatan = [
                 ["No", "Uraian", "Nominal (Rp)", "No", "Uraian", "Nominal (Rp)"],
-                ["1", "Penerimaan Tunai Pelayanan", f"{penerimaan_tunai:,.2f}", "5", "Penerimaan Non-Tunai (QRIS/EDC)", f"{penerimaan_nontunai:,.2f}"],
-                ["2", "Pembayaran Piutang Tunai", f"{piutang_tunai:,.2f}", "6", "Pembayaran Piutang Non-Tunai", f"{piutang_nontunai:,.2f}"],
-                ["3", "Penerimaan Deposit Tunai", f"{deposit_tunai:,.2f}", "7", "Penerimaan Deposit Non-Tunai", f"{deposit_nontunai:,.2f}"],
-                ["4", "Pengembalian / Refund Tunai", f"{refund_tunai:,.2f}", "8", "Biaya Admin EDC/QRIS", f"{biaya_admin:,.2f}"],
+                ["1", "Penerimaan Tunai Pelayanan", f"{penerimaan_tunai_c:,.2f}", "5", "Penerimaan Non-Tunai (QRIS/EDC)", f"{penerimaan_nontunai_c:,.2f}"],
+                ["2", "Pembayaran Piutang Tunai", f"{piutang_tunai_c:,.2f}", "6", "Pembayaran Piutang Non-Tunai", f"{piutang_nontunai_c:,.2f}"],
+                ["3", "Penerimaan Deposit Tunai", f"{deposit_tunai_c:,.2f}", "7", "Penerimaan Deposit Non-Tunai", f"{deposit_nontunai_c:,.2f}"],
+                ["4", "Pengembalian / Refund Tunai", f"{refund_tunai_c:,.2f}", "8", "Biaya Admin EDC/QRIS", f"{biaya_admin_c:,.2f}"],
                 [
                     Paragraph("<b>T</b>", bold_style), 
                     Paragraph("<b>TOTAL KAS SHIFT SEBELUM SERAH TERIMA</b>", bold_style), 
                     Paragraph(f"<b>{total_tunai_sebelum:,.2f}</b>", bold_style), 
                     Paragraph("<b>T</b>", bold_style), 
                     Paragraph("<b>TOTAL PENERIMAAN NON TUNAI BERSIH</b>", bold_style), 
-                    Paragraph(f"<b>{total_nontunai_bersih:,.2f}</b>", bold_style)
+                    Paragraph(f"<b>{total_nontunai_bersih_val:,.2f}</b>", bold_style)
                 ]
             ]
             t_pend = Table(tabel_pendapatan, colWidths=[20, 160, 90, 20, 160, 90])
@@ -649,15 +557,14 @@ if menu_pilihan == "Closing Harian / Tutup Shift":
             elements.append(t_pend)
             elements.append(Spacer(1, 10))
 
-            # Tabel Ringkasan Serah Terima
             elements.append(Paragraph("<b>RINGKASAN SERAH TERIMA</b>", bold_style))
             tabel_serah = [
                 ["No", "Uraian", "Nominal (Rp)", "Keterangan"],
-                ["1", "Total Penerimaan Tunai", f"{penerimaan_tunai:,.2f}", ""],
-                ["2", "Dikurangi : Pengembalian / Refund Tunai", f"{refund_tunai:,.2f}", ""],
+                ["1", "Total Penerimaan Tunai", f"{penerimaan_tunai_c:,.2f}", ""],
+                ["2", "Dikurangi : Pengembalian / Refund Tunai", f"{refund_tunai_c:,.2f}", ""],
                 ["3", "Total uang tunai yang seharusnya diserahkan", f"{total_tunai_sebelum:,.2f}", ""],
                 ["4", "Total uang tunai aktual yang diserahkan (Fisik)", f"{total_fisik:,.2f}", ""],
-                ["5", "Selisih (+/-)", f"{selisih_fisik:,.2f}", "Diisi setelah penghitungan fisik"]
+                ["5", f"Selisih (+/-) [{status_selisih_c}]", f"{selisih_fisik:,.2f}", "Diisi setelah penghitungan fisik"]
             ]
             t_s = Table(tabel_serah, colWidths=[20, 240, 100, 180])
             t_s.setStyle(TableStyle([
@@ -669,14 +576,13 @@ if menu_pilihan == "Closing Harian / Tutup Shift":
             elements.append(t_s)
             elements.append(Spacer(1, 10))
 
-            # Tabel Pecahan Fisik
             elements.append(Paragraph("<b>RINCIAN UANG TUNAI YANG DISERAHKAN</b>", bold_style))
             tabel_fisik = [
                 ["Pecahan", "Jumlah Lembar / Keping", "Total (Rp)", "Pecahan", "Jumlah Lembar / Keping", "Total (Rp)"],
                 ["100.000", str(l_100k), f"{l_100k*100000:,.2f}", "5.000", str(l_5k), f"{l_5k*5000:,.2f}"],
                 ["50.000", str(l_50k), f"{l_50k*50000:,.2f}", "2.000", str(l_2k), f"{l_2k*2000:,.2f}"],
                 ["20.000", str(l_20k), f"{l_20k*20000:,.2f}", "1.000", str(l_1k), f"{l_1k*1000:,.2f}"],
-                ["10.000", str(l_10k), f"{l_10k*10000:,.2f}", "Logam", "-", f"{logam:,.2f}"],
+                ["10.000", str(l_10k), f"{l_10k*10000:,.2f}", "Logam", "-", f"{logam_c:,.2f}"],
             ]
             t_f = Table(tabel_fisik, colWidths=[60, 110, 100, 60, 110, 100])
             t_f.setStyle(TableStyle([
@@ -689,7 +595,6 @@ if menu_pilihan == "Closing Harian / Tutup Shift":
             elements.append(t_f)
             elements.append(Spacer(1, 15))
 
-            # Bagian Tanda Tangan (DIPERIKSA / DITERIMA OLEH)
             elements.append(Paragraph("<b>DIPERIKSA / DITERIMA OLEH:</b>", bold_style))
             elements.append(Spacer(1, 5))
             tabel_ttd = [
@@ -710,7 +615,6 @@ if menu_pilihan == "Closing Harian / Tutup Shift":
             buffer.seek(0)
             return buffer.getvalue()
 
-# --- TEMPATKAN KODE DI SINI (SEJAJAR KIRI / DI LUAR FUNGSI) ---
         pdf_data = generate_closing_pdf()
         st.download_button(
             label="📥 Unduh PDF Closing Harian",
