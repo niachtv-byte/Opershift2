@@ -382,6 +382,13 @@ if menu_pilihan == "Serah Terima Shift":
       + (l1 * 1000)
       + logam
   )
+
+  # Total Uang Fisik Aktual ditampilkan di bawah input pecahan
+  st.metric(
+      label="💰 Total Uang Fisik Aktual (Cash Count)",
+      value=f"Rp {total_uang_fisik:,.2f}",
+  )
+
   selisih_kas = total_uang_fisik - total_kas_seharusnya
   total_pendapatan_netto = total_tunai_netto + total_non_tunai_netto
   status_selisih = (
@@ -410,7 +417,7 @@ if menu_pilihan == "Serah Terima Shift":
   )
 
 
-  # Fungsi Generate PDF Shift Utama (Diperbarui ke ukuran A4 dengan margin 30, lebar efektif = 535 pt)
+  # Fungsi Generate PDF Shift Utama
   def create_pdf(
       petugas_lama, petugas_baru, pj_kasir, catatan_tambahan, edited_pending_df
   ):
@@ -478,7 +485,6 @@ if menu_pilihan == "Serah Terima Shift":
             Paragraph(petugas_baru, normal_style),
         ],
     ]
-    # Total lebar = 100 + 170 + 110 + 155 = 535 pt (A4 width 595.27 - 60 margins)
     t_meta = Table(meta_data, colWidths=[100, 170, 110, 155])
     t_meta.setStyle(
         TableStyle([
@@ -546,7 +552,6 @@ if menu_pilihan == "Serah Terima Shift":
             f"{total_pendapatan_netto:,.2f}",
         ],
     ]
-    # Total lebar = 200 + 110 + 112 + 113 = 535 pt
     t_rekap = Table(rekap_data, colWidths=[200, 110, 112, 113])
     t_rekap.setStyle(
         TableStyle([
@@ -628,7 +633,6 @@ if menu_pilihan == "Serah Terima Shift":
             f"Rp {selisih_kas:,.2f}",
         ],
     ]
-    # Total lebar = 90 + 45 + 132 + 90 + 45 + 133 = 535 pt
     t_cash = Table(cash_data, colWidths=[90, 45, 132, 90, 45, 133])
     t_cash.setStyle(
         TableStyle([
@@ -689,7 +693,6 @@ if menu_pilihan == "Serah Terima Shift":
           ["-", "Tidak ada transaksi pending", "-", "-"]
       )
 
-    # Memperlebar kolom Status / Tindak Lanjut menjadi 140 pt (Total lebar = 25 + 120 + 250 + 140 = 535 pt)
     t_pending = Table(pending_table_data, colWidths=[25, 120, 250, 140])
     t_pending.setStyle(
         TableStyle([
@@ -745,7 +748,6 @@ if menu_pilihan == "Serah Terima Shift":
         [petugas_lama, petugas_baru, pj_name],
     ]
 
-    # Total lebar = 175 + 175 + 185 = 535 pt
     t_sig = Table(sig_data, colWidths=[175, 175, 185])
     t_sig.setStyle(
         TableStyle([
@@ -864,19 +866,52 @@ elif menu_pilihan == "Closing Harian / Tutup Shift":
     st.subheader("2. Rincian Pecahan Uang Tunai Fisik")
     col_f1, col_f2, col_f3, col_f4 = st.columns(4)
     with col_f1:
-      l_100k = st.number_input("Lembar 100.000", min_value=0, value=0, step=1)
-      l_50k = st.number_input("Lembar 50.000", min_value=0, value=0, step=1)
-    with col_f2:
-      l_20k = st.number_input("Lembar 20.000", min_value=0, value=0, step=1)
-      l_10k = st.number_input("Lembar 10.000", min_value=0, value=0, step=1)
-    with col_f3:
-      l_5k = st.number_input("Lembar 5.000", min_value=0, value=0, step=1)
-      l_2k = st.number_input("Lembar 2.000", min_value=0, value=0, step=1)
-    with col_f4:
-      l_1k = st.number_input("Lembar 1.000", min_value=0, value=0, step=1)
-      logam_c = st.number_input(
-          "Total Koin / Logam (Rp)", min_value=0.0, value=0.0, step=500.0
+      l_100k = st.number_input(
+          "Lembar 100.000", min_value=0, value=0, step=1, key="l100_c"
       )
+      l_50k = st.number_input(
+          "Lembar 50.000", min_value=0, value=0, step=1, key="l50_c"
+      )
+    with col_f2:
+      l_20k = st.number_input(
+          "Lembar 20.000", min_value=0, value=0, step=1, key="l20_c"
+      )
+      l_10k = st.number_input(
+          "Lembar 10.000", min_value=0, value=0, step=1, key="l10_c"
+      )
+    with col_f3:
+      l_5k = st.number_input(
+          "Lembar 5.000", min_value=0, value=0, step=1, key="l5_c"
+      )
+      l_2k = st.number_input(
+          "Lembar 2.000", min_value=0, value=0, step=1, key="l2_c"
+      )
+    with col_f4:
+      l_1k = st.number_input(
+          "Lembar 1.000", min_value=0, value=0, step=1, key="l1_c"
+      )
+      logam_c = st.number_input(
+          "Total Koin / Logam (Rp)",
+          min_value=0.0,
+          value=0.0,
+          step=500.0,
+          key="logam_c",
+      )
+
+    total_fisik_c = (
+        (l_100k * 100000)
+        + (l_50k * 50000)
+        + (l_20k * 20000)
+        + (l_10k * 10000)
+        + (l_5k * 5000)
+        + (l_2k * 2000)
+        + (l_1k * 1000)
+        + logam_c
+    )
+    st.metric(
+        label="💰 Total Uang Fisik Aktual (Cash Count)",
+        value=f"Rp {total_fisik_c:,.2f}",
+    )
 
     catatan_closing = st.text_area(
         "Catatan Tambahan",
@@ -897,16 +932,7 @@ elif menu_pilihan == "Closing Harian / Tutup Shift":
         + deposit_nontunai_c
         - biaya_admin_c
     )
-    total_fisik = (
-        (l_100k * 100000)
-        + (l_50k * 50000)
-        + (l_20k * 20000)
-        + (l_10k * 10000)
-        + (l_5k * 5000)
-        + (l_2k * 2000)
-        + (l_1k * 1000)
-        + logam_c
-    )
+    total_fisik = total_fisik_c
     selisih_fisik = total_fisik - total_tunai_sebelum
     status_selisih_c = (
         "PAS / SESUAI"
