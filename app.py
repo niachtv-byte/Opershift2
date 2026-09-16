@@ -431,25 +431,35 @@ def create_pdf():
     pending_table_data = [["No.", "Nama / No RM", "Keterangan / Kendala", "Status / Tindak Lanjut"]]
     
     if not edited_pending_df.empty:
-        for idx, row in edited_pending_df.reset_index(drop=True).iterrows():
-            try:
-                # Mengambil data berdasarkan nama kolom baru secara aman
-                nama_orm = str(row.iloc[0]) if len(row) > 0 else ""
-                ket = str(row.iloc[1]) if len(row) > 1 else ""
-                status_tindakan = str(row.iloc[2]) if len(row) > 2 else ""
-            except:
-                nama_orm = ""
-                ket = ""
-                status_tindakan = ""
-                
-            pending_table_data.append([
-                str(idx + 1),
-                nama_orm,
-                ket,
-                status_tindakan
-            ])
-    else:
-        pending_table_data.append(["-", "Tidak ada transaksi pending", "-", "-"])
+    # Definisikan style paragraf untuk tabel agar teks bisa otomatis turun (wrap)
+    from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+    styles = getSampleStyleSheet()
+    table_text_style = ParagraphStyle(
+        'TableTextCustom',
+        parent=styles['Normal'],
+        fontSize=8,
+        leading=10
+    )
+
+    for idx, row in edited_pending_df.reset_index(drop=True).iterrows():
+        try:
+            nama_orm = str(row.iloc[0]) if len(row) > 0 else ""
+            ket = str(row.iloc[1]) if len(row) > 1 else ""
+            status_tindakan = str(row.iloc[2]) if len(row) > 2 else ""
+        except:
+            nama_orm = ""
+            ket = ""
+            status_tindakan = ""
+        
+        # BUNGKUS DENGAN PARAGRAPH AGAR TEKS OTOMATIS TURUN KE BAWAH
+        pending_table_data.append([
+            str(idx + 1),
+            Paragraph(nama_orm, table_text_style),
+            Paragraph(ket, table_text_style),
+            status_tindakan
+        ])
+else:
+    pending_table_data.append(["-", "Tidak ada transaksi pending", "-", "-"])
 
     t_pending = Table(pending_table_data, colWidths=[30, 130, 230, 114])
     t_pending.setStyle(TableStyle([
@@ -466,8 +476,17 @@ def create_pdf():
     elements.append(t_pending)
     elements.append(Spacer(1, 10))
     
-    elements.append(Paragraph(f"<b>Catatan Kasir:</b> {catatan_tambahan}", normal_style))
-    elements.append(Spacer(1, 10))
+    # Buat style khusus catatan agar bisa terbungkus rapi
+    from reportlab.lib.styles import ParagraphStyle
+    catatan_style = ParagraphStyle(
+        'CatatanStylePdf', 
+        parent=normal_style, 
+        fontSize=8, 
+        leading=10
+    )
+
+# Gunakan style tersebut pada Paragraph Catatan Kasir
+elements.append(Paragraph(f"<b>Catatan Kasir:</b> {catatan_tambahan}", catatan_style))
     
     elements.append(Paragraph("<b>4. PERNYATAAN SERAH TERIMA ANTAR SHIFT</b>", normal_bold))
     pernyataan_text = "Kas, dokumen, dan informasi transaksi shift telah diperiksa dan diserahterimakan sesuai kondisi pada saat pergantian shift."
@@ -507,12 +526,16 @@ if menu_pilihan == "Closing Harian / Tutup Shift":
     st.title("📑 Form Closing Harian & Tutup Shift Kasir")
     st.markdown("Form pendapatan otomatis dari tarikan SIMRS, dilengkapi rincian pecahan uang fisik.")
 
-    # Ambil data otomatis dari memori yang disimpan dari menu SIMRS
-    default_tunai = st.session_state.get('simrs_tunai', 0.0)
-    default_nontunai = st.session_state.get('simrs_nontunai', 0.0)
+    # Ambil data otomatis dari session state hasil SIMRS
+    default_tunai_pelayanan = st.session_state.get('simrs_tunai_pelayanan', 0.0)
+    
+    # PERHATIKAN INI: Perbaiki nama variabel berikut agar sesuai dengan data session state Anda
     default_piutang_t = st.session_state.get('simrs_piutang_tunai', 0.0)
     default_deposit_t = st.session_state.get('simrs_deposit_tunai', 0.0)
     default_refund_t = st.session_state.get('simrs_refund_tunai', 0.0)
+    
+    default_nontunai_brutto = st.session_state.get('simrs_nontunai_brutto', 0.0)
+    default_nontunai_admin = st.session_state.get('simrs_nontunai_admin', 0.0)
 
     with st.form("form_closing_harian"):
         col1, col2, col3 = st.columns(3)
@@ -526,18 +549,21 @@ if menu_pilihan == "Closing Harian / Tutup Shift":
         st.subheader("1. Pendapatan & Transaksi (Otomatis dari SIMRS)")
         c1, c2 = st.columns(2)
         with c1:
-            # Nilai otomatis terisi dari hasil upload SIMRS di menu sebelumnya
-            penerimaan_tunai = st.number_input("Penerimaan Tunai Pelayanan (Rp)", min_value=0.0, value=default_tunai, step=1000.0)
-            piutang_tunai = st.number_input("Pelunasan Piutang Tunai (Rp)", min_value=0.0, value=default_piutang_t, step=1000.0)
+            st.markdown("##### Sisi Tunai")
+            # Menggunakan variabel default yang sudah diperbaiki namanya di atas
+            penerimaan_tunai = st.number_input("Penerimaan Tunai Pelayanan (Rp)", min_value=0.0, value=default_tunai_pelayanan, step=1000.0)
+            piutang_tunai = st.number_input("Pembayaran Piutang Tunai (Rp)", min_value=0.0, value=default_piutang_t, step=1000.0)
             deposit_tunai = st.number_input("Penerimaan Deposit Tunai (Rp)", min_value=0.0, value=default_deposit_t, step=1000.0)
             refund_tunai = st.number_input("Pengembalian / Refund Tunai (Rp)", min_value=0.0, value=default_refund_t, step=1000.0)
+            
         with c2:
-            penerimaan_nontunai = st.number_input("Penerimaan Non-Tunai (QRIS/EDC/Transfer) (Rp)", min_value=0.0, value=default_nontunai, step=1000.0)
-            piutang_nontunai = st.number_input("Pelunasan Piutang Non-Tunai (Rp)", min_value=0.0, value=0.0, step=1000.0)
-            deposit_nontunai = st.number_input("Penerimaan Deposit Non-Tunai (Rp)", min_value=0.0, value=0.0, step=1000.0)
-            biaya_admin = st.number_input("Biaya Admin EDC / QRIS (Rp)", min_value=0.0, value=0.0, step=100.0)
-
-        # Bagian rincian pecahan uang fisik tetap diisi manual oleh kasir seperti biasa di bawahnya...
+            st.markdown("##### Sisi Non-Tunai")
+            penerimaan_nontunai = st.number_input("Penerimaan Non-Tunai (QRIS/EDC) (Rp)", min_value=0.0, value=default_nontunai_brutto, step=1000.0)
+            biaya_admin = st.number_input("Biaya Admin EDC/QRIS (Rp)", min_value=0.0, value=default_nontunai_admin, step=1000.0)
+            
+            # Total Non-Tunai Bersih terhitung otomatis
+            total_nontunai_bersih = penerimaan_nontunai - biaya_admin
+            st.info(f"**Total Non-Tunai Netto:** Rp {total_nontunai_bersih:,.2f}")
 
         st.subheader("2. Rincian Pecahan Uang Tunai Fisik")
         col_f1, col_f2, col_f3, col_f4 = st.columns(4)
