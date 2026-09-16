@@ -570,26 +570,35 @@ if menu_pilihan == "Closing Harian / Tutup Shift":
             elements.append(t_meta)
             elements.append(Spacer(1, 10))
 
+            # Tabel Pendapatan (Menggunakan Paragraph agar tag <b> terbaca rapi)
             tabel_pendapatan = [
                 ["No", "Uraian", "Nominal (Rp)", "No", "Uraian", "Nominal (Rp)"],
                 ["1", "Penerimaan Tunai Pelayanan", f"{penerimaan_tunai:,.2f}", "5", "Penerimaan Non-Tunai (QRIS/EDC)", f"{penerimaan_nontunai:,.2f}"],
                 ["2", "Pembayaran Piutang Tunai", f"{piutang_tunai:,.2f}", "6", "Pembayaran Piutang Non-Tunai", f"{piutang_nontunai:,.2f}"],
                 ["3", "Penerimaan Deposit Tunai", f"{deposit_tunai:,.2f}", "7", "Penerimaan Deposit Non-Tunai", f"{deposit_nontunai:,.2f}"],
                 ["4", "Pengembalian / Refund Tunai", f"{refund_tunai:,.2f}", "8", "Biaya Admin EDC/QRIS", f"{biaya_admin:,.2f}"],
-                ["<b>T</b>", "<b>TOTAL KAS SHIFT SEBELUMNYA</b>", f"<b>{total_tunai_sebelum:,.2f}</b>", "<b>T</b>", "<b>TOTAL NON TUNAI BERSIH</b>", f"<b>{total_nontunai_bersih:,.2f}</b>"]
+                [
+                    Paragraph("<b>T</b>", bold_style), 
+                    Paragraph("<b>TOTAL KAS SHIFT SEBELUM SERAH TERIMA</b>", bold_style), 
+                    Paragraph(f"<b>{total_tunai_sebelum:,.2f}</b>", bold_style), 
+                    Paragraph("<b>T</b>", bold_style), 
+                    Paragraph("<b>TOTAL PENERIMAAN NON TUNAI BERSIH</b>", bold_style), 
+                    Paragraph(f"<b>{total_nontunai_bersih:,.2f}</b>", bold_style)
+                ]
             ]
             t_pend = Table(tabel_pendapatan, colWidths=[20, 160, 90, 20, 160, 90])
             t_pend.setStyle(TableStyle([
                 ('BACKGROUND', (0,0), (-1,0), colors.HexColor("#e0e0e0")),
-                ('FONTNAME', (0,0), (-1,0), 'Helvetica-Bold'),
                 ('FONTSIZE', (0,0), (-1,-1), 8),
                 ('GRID', (0,0), (-1,-1), 0.5, colors.grey),
+                ('VALIGN', (0,0), (-1,-1), 'MIDDLE'),
                 ('ALIGN', (2,0), (2,-1), 'RIGHT'),
                 ('ALIGN', (5,0), (5,-1), 'RIGHT'),
             ]))
             elements.append(t_pend)
             elements.append(Spacer(1, 10))
 
+            # Tabel Ringkasan Serah Terima
             elements.append(Paragraph("<b>RINGKASAN SERAH TERIMA</b>", bold_style))
             tabel_serah = [
                 ["No", "Uraian", "Nominal (Rp)", "Keterangan"],
@@ -609,6 +618,7 @@ if menu_pilihan == "Closing Harian / Tutup Shift":
             elements.append(t_s)
             elements.append(Spacer(1, 10))
 
+            # Tabel Pecahan Fisik
             elements.append(Paragraph("<b>RINCIAN UANG TUNAI YANG DISERAHKAN</b>", bold_style))
             tabel_fisik = [
                 ["Pecahan", "Jumlah Lembar / Keping", "Total (Rp)", "Pecahan", "Jumlah Lembar / Keping", "Total (Rp)"],
@@ -628,14 +638,23 @@ if menu_pilihan == "Closing Harian / Tutup Shift":
             elements.append(t_f)
             elements.append(Spacer(1, 15))
 
+            # Bagian Tanda Tangan (DIPERIKSA / DITERIMA OLEH)
+            elements.append(Paragraph("<b>DIPERIKSA / DITERIMA OLEH:</b>", bold_style))
+            elements.append(Spacer(1, 5))
+            tabel_ttd = [
+                ["Nama Petugas", "Jabatan", "Tanda Tangan", "Waktu"],
+                [nama_kasir or "...........................", "Penanggung Jawab Kasir", "\n\n", ""],
+                ["...........................", "Bendahara Penerimaan", "\n\n", ""]
+            ]
+            t_ttd_obj = Table(tabel_ttd, colWidths=[140, 150, 120, 130])
+            t_ttd_obj.setStyle(TableStyle([
+                ('BACKGROUND', (0,0), (-1,0), colors.HexColor("#e0e0e0")),
+                ('FONTSIZE', (0,0), (-1,-1), 8),
+                ('GRID', (0,0), (-1,-1), 0.5, colors.grey),
+                ('VALIGN', (0,0), (-1,-1), 'MIDDLE'),
+            ]))
+            elements.append(t_ttd_obj)
+
             doc.build(elements)
             buffer.seek(0)
             return buffer.getvalue()
-
-        pdf_data = generate_closing_pdf()
-        st.download_button(
-            label="📥 Unduh PDF Closing Harian",
-            data=pdf_data,
-            file_name=f"Closing_Kasir_{tanggal_closing}.pdf",
-            mime="application/pdf"
-            )
