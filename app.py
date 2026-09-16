@@ -488,7 +488,7 @@ def create_pdf():
 # Gunakan style tersebut pada Paragraph Catatan Kasir
 elements.append(Paragraph(f"<b>Catatan Kasir:</b> {catatan_tambahan}", catatan_style))
     
-    elements.append(Paragraph("<b>4. PERNYATAAN SERAH TERIMA ANTAR SHIFT</b>", normal_bold))
+elements.append(Paragraph("<b>4. PERNYATAAN SERAH TERIMA ANTAR SHIFT</b>", normal_bold))
     pernyataan_text = "Kas, dokumen, dan informasi transaksi shift telah diperiksa dan diserahterimakan sesuai kondisi pada saat pergantian shift."
     elements.append(Paragraph(pernyataan_text, normal_style))
     elements.append(Spacer(1, 15))
