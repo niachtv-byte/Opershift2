@@ -9,19 +9,7 @@ from reportlab.lib import colors
 
 # Set Page Config
 st.set_page_config(
-    import streamlit as st
-import pandas as pd
-from reportlab.lib.pagesizes import A4
-from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle
-from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
-from reportlab.lib import colors
-import io
-
-# Konfigurasi Halaman
-st.set_page_config(page_title="Aplikasi Rekonsiliasi & Closing Kasir", layout="wide")
-
-# --- TAMBAHKAN INI DI BAGIAN ATAS SETELAH CONFIG ---
-st.sidebar.title("📌 Navigasi Menu")
+    st.sidebar.title("📌 Navigasi Menu")
 menu_pilihan = st.sidebar.radio(
     "Pilih Jenis Form:",
     ["Serah Terima Shift", "Closing Harian / Tutup Shift"]
@@ -500,3 +488,147 @@ st.download_button(
     file_name=f"Serah_Terima_Kasir_{tgl_shift}.pdf",
     mime="application/pdf"
 )
+# --- FORM CLOSING HARIAN TAMBAHAN DI BAGIAN BAWAH ---
+if menu_pilihan == "Closing Harian / Tutup Shift":
+    st.title("📑 Form Closing Harian & Tutup Shift Kasir")
+    st.markdown("Form ringkas untuk pencatatan tutup shift, rekapitulasi tunai/non-tunai, dan rincian pecahan uang fisik.")
+
+    with st.form("form_closing_harian"):
+        col1, col2, col3 = st.columns(3)
+        with col1:
+            tanggal_closing = st.date_input("Tanggal Closing")
+        with col2:
+            jam_closing = st.text_input("Jam Closing (WIB)", value="07.30")
+        with col3:
+            nama_kasir = st.text_input("Penanggung Jawab Kasir", value="")
+            
+        st.subheader("1. Pendapatan & Transaksi")
+        c1, c2 = st.columns(2)
+        with c1:
+            penerimaan_tunai = st.number_input("Penerimaan Tunai Pelayanan (Rp)", min_value=0.0, value=0.0, step=1000.0)
+            piutang_tunai = st.number_input("Pelunasan Piutang Tunai (Rp)", min_value=0.0, value=0.0, step=1000.0)
+            deposit_tunai = st.number_input("Penerimaan Deposit Tunai (Rp)", min_value=0.0, value=0.0, step=1000.0)
+            refund_tunai = st.number_input("Pengembalian / Refund Tunai (Rp)", min_value=0.0, value=0.0, step=1000.0)
+        with c2:
+            penerimaan_nontunai = st.number_input("Penerimaan Non-Tunai (QRIS/EDC/Transfer) (Rp)", min_value=0.0, value=0.0, step=1000.0)
+            piutang_nontunai = st.number_input("Pelunasan Piutang Non-Tunai (Rp)", min_value=0.0, value=0.0, step=1000.0)
+            deposit_nontunai = st.number_input("Penerimaan Deposit Non-Tunai (Rp)", min_value=0.0, value=0.0, step=1000.0)
+            biaya_admin = st.number_input("Biaya Admin EDC / QRIS (Rp)", min_value=0.0, value=0.0, step=100.0)
+
+        st.subheader("2. Rincian Pecahan Uang Tunai Fisik")
+        col_f1, col_f2, col_f3, col_f4 = st.columns(4)
+        with col_f1:
+            l_100k = st.number_input("Lembar 100.000", min_value=0, value=0, step=1)
+            l_50k = st.number_input("Lembar 50.000", min_value=0, value=0, step=1)
+        with col_f2:
+            l_20k = st.number_input("Lembar 20.000", min_value=0, value=0, step=1)
+            l_10k = st.number_input("Lembar 10.000", min_value=0, value=0, step=1)
+        with col_f3:
+            l_5k = st.number_input("Lembar 5.000", min_value=0, value=0, step=1)
+            l_2k = st.number_input("Lembar 2.000", min_value=0, value=0, step=1)
+        with col_f4:
+            l_1k = st.number_input("Lembar 1.000", min_value=0, value=0, step=1)
+            logam = st.number_input("Total Koin / Logam (Rp)", min_value=0.0, value=0.0, step=500.0)
+
+        catatan_closing = st.text_area("Catatan Tambahan", placeholder="Tuliskan catatan atau kendala jika ada...")
+        submitted_closing = st.form_submit_button("Generate Laporan Closing PDF")
+
+    if submitted_closing:
+        total_tunai_sebelum = penerimaan_tunai + piutang_tunai + deposit_tunai - refund_tunai
+        total_nontunai_bersih = penerimaan_nontunai + piutang_nontunai + deposit_nontunai - biaya_admin
+        total_fisik = (l_100k * 100000) + (l_50k * 50000) + (l_20k * 20000) + (l_10k * 10000) + (l_5k * 5000) + (l_2k * 2000) + (l_1k * 1000) + logam
+        selisih_fisik = total_fisik - total_tunai_sebelum
+
+        st.success("Data Closing berhasil dihitung! Silakan unduh PDF di bawah ini:")
+
+        def generate_closing_pdf():
+            buffer = io.BytesIO()
+            doc = SimpleDocTemplate(buffer, pagesize=A4, rightMargin=30, leftMargin=30, topMargin=30, bottomMargin=30)
+            elements = []
+            styles = getSampleStyleSheet()
+            
+            title_style = ParagraphStyle('TitleStyle', parent=styles['Heading1'], fontSize=12, alignment=1, fontName='Helvetica-Bold')
+            normal_style = ParagraphStyle('NormalStyle', parent=styles['Normal'], fontSize=8, fontName='Helvetica')
+            bold_style = ParagraphStyle('BoldStyle', parent=styles['Normal'], fontSize=8, fontName='Helvetica-Bold')
+
+            elements.append(Paragraph("FORM SERAH TERIMA KAS CLOSING KASIR", title_style))
+            elements.append(Spacer(1, 10))
+            
+            meta_data = [
+                [Paragraph(f"<b>Tanggal :</b> {tanggal_closing}", normal_style), Paragraph(f"<b>Jam Closing :</b> {jam_closing} WIB", normal_style)],
+                [Paragraph(f"<b>Penanggung Jawab Kasir :</b> {nama_kasir}", normal_style), Paragraph("<b>Bendahara Penerimaan :</b>", normal_style)]
+            ]
+            t_meta = Table(meta_data, colWidths=[270, 270])
+            t_meta.setStyle(TableStyle([('VALIGN', (0,0), (-1,-1), 'TOP')]))
+            elements.append(t_meta)
+            elements.append(Spacer(1, 10))
+
+            tabel_pendapatan = [
+                ["No", "Uraian", "Nominal (Rp)", "No", "Uraian", "Nominal (Rp)"],
+                ["1", "Penerimaan Tunai Pelayanan", f"{penerimaan_tunai:,.2f}", "5", "Penerimaan Non-Tunai (QRIS/EDC)", f"{penerimaan_nontunai:,.2f}"],
+                ["2", "Pembayaran Piutang Tunai", f"{piutang_tunai:,.2f}", "6", "Pembayaran Piutang Non-Tunai", f"{piutang_nontunai:,.2f}"],
+                ["3", "Penerimaan Deposit Tunai", f"{deposit_tunai:,.2f}", "7", "Penerimaan Deposit Non-Tunai", f"{deposit_nontunai:,.2f}"],
+                ["4", "Pengembalian / Refund Tunai", f"{refund_tunai:,.2f}", "8", "Biaya Admin EDC/QRIS", f"{biaya_admin:,.2f}"],
+                ["<b>T</b>", "<b>TOTAL KAS SHIFT SEBELUMNYA</b>", f"<b>{total_tunai_sebelum:,.2f}</b>", "<b>T</b>", "<b>TOTAL NON TUNAI BERSIH</b>", f"<b>{total_nontunai_bersih:,.2f}</b>"]
+            ]
+            t_pend = Table(tabel_pendapatan, colWidths=[20, 160, 90, 20, 160, 90])
+            t_pend.setStyle(TableStyle([
+                ('BACKGROUND', (0,0), (-1,0), colors.HexColor("#e0e0e0")),
+                ('FONTNAME', (0,0), (-1,0), 'Helvetica-Bold'),
+                ('FONTSIZE', (0,0), (-1,-1), 8),
+                ('GRID', (0,0), (-1,-1), 0.5, colors.grey),
+                ('ALIGN', (2,0), (2,-1), 'RIGHT'),
+                ('ALIGN', (5,0), (5,-1), 'RIGHT'),
+            ]))
+            elements.append(t_pend)
+            elements.append(Spacer(1, 10))
+
+            elements.append(Paragraph("<b>RINGKASAN SERAH TERIMA</b>", bold_style))
+            tabel_serah = [
+                ["No", "Uraian", "Nominal (Rp)", "Keterangan"],
+                ["1", "Total Penerimaan Tunai", f"{penerimaan_tunai:,.2f}", ""],
+                ["2", "Dikurangi : Pengembalian / Refund Tunai", f"{refund_tunai:,.2f}", ""],
+                ["3", "Total uang tunai yang seharusnya diserahkan", f"{total_tunai_sebelum:,.2f}", ""],
+                ["4", "Total uang tunai aktual yang diserahkan (Fisik)", f"{total_fisik:,.2f}", ""],
+                ["5", "Selisih (+/-)", f"{selisih_fisik:,.2f}", "Diisi setelah penghitungan fisik"]
+            ]
+            t_s = Table(tabel_serah, colWidths=[20, 240, 100, 180])
+            t_s.setStyle(TableStyle([
+                ('BACKGROUND', (0,0), (-1,0), colors.HexColor("#e0e0e0")),
+                ('FONTSIZE', (0,0), (-1,-1), 8),
+                ('GRID', (0,0), (-1,-1), 0.5, colors.grey),
+                ('ALIGN', (2,1), (2,-1), 'RIGHT'),
+            ]))
+            elements.append(t_s)
+            elements.append(Spacer(1, 10))
+
+            elements.append(Paragraph("<b>RINCIAN UANG TUNAI YANG DISERAHKAN</b>", bold_style))
+            tabel_fisik = [
+                ["Pecahan", "Jumlah Lembar / Keping", "Total (Rp)", "Pecahan", "Jumlah Lembar / Keping", "Total (Rp)"],
+                ["100.000", str(l_100k), f"{l_100k*100000:,.2f}", "5.000", str(l_5k), f"{l_5k*5000:,.2f}"],
+                ["50.000", str(l_50k), f"{l_50k*50000:,.2f}", "2.000", str(l_2k), f"{l_2k*2000:,.2f}"],
+                ["20.000", str(l_20k), f"{l_20k*20000:,.2f}", "1.000", str(l_1k), f"{l_1k*1000:,.2f}"],
+                ["10.000", str(l_10k), f"{l_10k*10000:,.2f}", "Logam", "-", f"{logam:,.2f}"],
+            ]
+            t_f = Table(tabel_fisik, colWidths=[60, 110, 100, 60, 110, 100])
+            t_f.setStyle(TableStyle([
+                ('BACKGROUND', (0,0), (-1,0), colors.HexColor("#e0e0e0")),
+                ('FONTSIZE', (0,0), (-1,-1), 8),
+                ('GRID', (0,0), (-1,-1), 0.5, colors.grey),
+                ('ALIGN', (2,0), (2,-1), 'RIGHT'),
+                ('ALIGN', (5,0), (5,-1), 'RIGHT'),
+            ]))
+            elements.append(t_f)
+            elements.append(Spacer(1, 15))
+
+            doc.build(elements)
+            buffer.seek(0)
+            return buffer.getvalue()
+
+        pdf_data = generate_closing_pdf()
+        st.download_button(
+            label="📥 Unduh PDF Closing Harian",
+            data=pdf_data,
+            file_name=f"Closing_Kasir_{tanggal_closing}.pdf",
+            mime="application/pdf"
+            )
