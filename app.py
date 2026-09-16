@@ -2,7 +2,7 @@ import datetime
 import io
 import pandas as pd
 from reportlab.lib import colors
-from reportlab.lib.pagesizes import A4, letter
+from reportlab.lib.pagesizes import A4
 from reportlab.lib.styles import ParagraphStyle, getSampleStyleSheet
 from reportlab.platypus import (
     HRFlowable,
@@ -410,12 +410,19 @@ if menu_pilihan == "Serah Terima Shift":
   )
 
 
-  # Fungsi Generate PDF Shift Utama
+  # Fungsi Generate PDF Shift Utama (Diperbarui ke ukuran A4 dengan margin 30, lebar efektif = 535 pt)
   def create_pdf(
       petugas_lama, petugas_baru, pj_kasir, catatan_tambahan, edited_pending_df
   ):
     buffer = io.BytesIO()
-    doc = SimpleDocTemplate(buffer, pagesize=letter)
+    doc = SimpleDocTemplate(
+        buffer,
+        pagesize=A4,
+        rightMargin=30,
+        leftMargin=30,
+        topMargin=30,
+        bottomMargin=30,
+    )
     styles = getSampleStyleSheet()
 
     title_style = ParagraphStyle(
@@ -471,7 +478,8 @@ if menu_pilihan == "Serah Terima Shift":
             Paragraph(petugas_baru, normal_style),
         ],
     ]
-    t_meta = Table(meta_data, colWidths=[100, 170, 110, 170])
+    # Total lebar = 100 + 170 + 110 + 155 = 535 pt (A4 width 595.27 - 60 margins)
+    t_meta = Table(meta_data, colWidths=[100, 170, 110, 155])
     t_meta.setStyle(
         TableStyle([
             ("BACKGROUND", (0, 0), (-1, -1), colors.HexColor("#F2F4F3")),
@@ -538,7 +546,8 @@ if menu_pilihan == "Serah Terima Shift":
             f"{total_pendapatan_netto:,.2f}",
         ],
     ]
-    t_rekap = Table(rekap_data, colWidths=[210, 110, 115, 115])
+    # Total lebar = 200 + 110 + 112 + 113 = 535 pt
+    t_rekap = Table(rekap_data, colWidths=[200, 110, 112, 113])
     t_rekap.setStyle(
         TableStyle([
             ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#1e4d2b")),
@@ -619,7 +628,8 @@ if menu_pilihan == "Serah Terima Shift":
             f"Rp {selisih_kas:,.2f}",
         ],
     ]
-    t_cash = Table(cash_data, colWidths=[90, 50, 135, 90, 50, 135])
+    # Total lebar = 90 + 45 + 132 + 90 + 45 + 133 = 535 pt
+    t_cash = Table(cash_data, colWidths=[90, 45, 132, 90, 45, 133])
     t_cash.setStyle(
         TableStyle([
             ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#444444")),
@@ -672,21 +682,22 @@ if menu_pilihan == "Serah Terima Shift":
             str(idx + 1),
             Paragraph(nama_orm, table_text_style),
             Paragraph(ket, table_text_style),
-            status_tindakan,
+            Paragraph(status_tindakan, table_text_style),
         ])
     else:
       pending_table_data.append(
           ["-", "Tidak ada transaksi pending", "-", "-"]
       )
 
-    t_pending = Table(pending_table_data, colWidths=[30, 130, 230, 114])
+    # Memperlebar kolom Status / Tindak Lanjut menjadi 140 pt (Total lebar = 25 + 120 + 250 + 140 = 535 pt)
+    t_pending = Table(pending_table_data, colWidths=[25, 120, 250, 140])
     t_pending.setStyle(
         TableStyle([
             ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#1e4d2b")),
             ("TEXTCOLOR", (0, 0), (-1, 0), colors.white),
             ("FONTNAME", (0, 0), (-1, 0), "Helvetica-Bold"),
             ("FONTSIZE", (0, 0), (-1, -1), 8),
-            ("ALIGN", (3, 1), (3, -1), "RIGHT"),
+            ("ALIGN", (0, 1), (0, -1), "CENTER"),
             ("GRID", (0, 0), (-1, -1), 0.5, colors.grey),
             ("BACKGROUND", (0, -1), (-1, -1), colors.HexColor("#E3F2FD")),
             ("FONTNAME", (0, -1), (-1, -1), "Helvetica-Bold"),
@@ -734,7 +745,8 @@ if menu_pilihan == "Serah Terima Shift":
         [petugas_lama, petugas_baru, pj_name],
     ]
 
-    t_sig = Table(sig_data, colWidths=[180, 180, 190])
+    # Total lebar = 175 + 175 + 185 = 535 pt
+    t_sig = Table(sig_data, colWidths=[175, 175, 185])
     t_sig.setStyle(
         TableStyle([
             ("ALIGN", (0, 0), (-1, -1), "CENTER"),
@@ -1157,4 +1169,4 @@ elif menu_pilihan == "Closing Harian / Tutup Shift":
         data=pdf_data,
         file_name=f"Closing_Kasir_{tanggal_closing}.pdf",
         mime="application/pdf",
-    )
+      )
