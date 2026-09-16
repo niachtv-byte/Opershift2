@@ -660,10 +660,10 @@ if menu_pilihan == "Closing Harian / Tutup Shift":
             return buffer.getvalue()
 
 # --- TEMPATKAN KODE DI SINI (SEJAJAR KIRI / DI LUAR FUNGSI) ---
-pdf_data = generate_closing_pdf()
-st.download_button(
-    label="📥 Unduh PDF Closing Harian",
-    data=pdf_data,
-    file_name=f"Closing_Kasir_{tanggal_closing}.pdf",
-    mime="application/pdf"
-)
+        pdf_data = generate_closing_pdf()
+        st.download_button(
+            label="📥 Unduh PDF Closing Harian",
+            data=pdf_data,
+            file_name=f"Closing_Kasir_{tanggal_closing}.pdf",
+            mime="application/pdf"
+            )
