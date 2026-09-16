@@ -257,6 +257,13 @@ if file_parsed and not df_display_clean.empty:
                 
         excel_data = output.getvalue()
 
+        # SIMPAN KE SESSION STATE UNTUK FORM CLOSING HARIAN
+        st.session_state['simrs_tunai'] = float(tunai_netto)
+        st.session_state['simrs_nontunai'] = float(nontunai_netto)
+        st.session_state['simrs_piutang_tunai'] = 0.0  # Sesuaikan jika ada variabel piutang
+        st.session_state['simrs_deposit_tunai'] = 0.0 # Sesuaikan jika ada variabel deposit
+        st.session_state['simrs_refund_tunai'] = 0.0  # Sesuaikan jika ada variabel refund
+
         st.download_button(
             label="📥 Unduh Ringkasan SIMRS (XLSX)",
             data=excel_data,
@@ -496,9 +503,16 @@ st.download_button(
     mime="application/pdf"
 )
 # --- FORM CLOSING HARIAN TAMBAHAN DI BAGIAN BAWAH ---
-if menu_pilihan == "Closing Harian / Tutup Shift":
+elif menu_pilihan == "Closing Harian / Tutup Shift":
     st.title("📑 Form Closing Harian & Tutup Shift Kasir")
-    st.markdown("Form ringkas untuk pencatatan tutup shift, rekapitulasi tunai/non-tunai, dan rincian pecahan uang fisik.")
+    st.markdown("Form pendapatan otomatis dari tarikan SIMRS, dilengkapi rincian pecahan uang fisik.")
+
+    # Ambil data otomatis dari memori yang disimpan dari menu SIMRS
+    default_tunai = st.session_state.get('simrs_tunai', 0.0)
+    default_nontunai = st.session_state.get('simrs_nontunai', 0.0)
+    default_piutang_t = st.session_state.get('simrs_piutang_tunai', 0.0)
+    default_deposit_t = st.session_state.get('simrs_deposit_tunai', 0.0)
+    default_refund_t = st.session_state.get('simrs_refund_tunai', 0.0)
 
     with st.form("form_closing_harian"):
         col1, col2, col3 = st.columns(3)
@@ -509,18 +523,21 @@ if menu_pilihan == "Closing Harian / Tutup Shift":
         with col3:
             nama_kasir = st.text_input("Penanggung Jawab Kasir", value="")
             
-        st.subheader("1. Pendapatan & Transaksi")
+        st.subheader("1. Pendapatan & Transaksi (Otomatis dari SIMRS)")
         c1, c2 = st.columns(2)
         with c1:
-            penerimaan_tunai = st.number_input("Penerimaan Tunai Pelayanan (Rp)", min_value=0.0, value=0.0, step=1000.0)
-            piutang_tunai = st.number_input("Pelunasan Piutang Tunai (Rp)", min_value=0.0, value=0.0, step=1000.0)
-            deposit_tunai = st.number_input("Penerimaan Deposit Tunai (Rp)", min_value=0.0, value=0.0, step=1000.0)
-            refund_tunai = st.number_input("Pengembalian / Refund Tunai (Rp)", min_value=0.0, value=0.0, step=1000.0)
+            # Nilai otomatis terisi dari hasil upload SIMRS di menu sebelumnya
+            penerimaan_tunai = st.number_input("Penerimaan Tunai Pelayanan (Rp)", min_value=0.0, value=default_tunai, step=1000.0)
+            piutang_tunai = st.number_input("Pelunasan Piutang Tunai (Rp)", min_value=0.0, value=default_piutang_t, step=1000.0)
+            deposit_tunai = st.number_input("Penerimaan Deposit Tunai (Rp)", min_value=0.0, value=default_deposit_t, step=1000.0)
+            refund_tunai = st.number_input("Pengembalian / Refund Tunai (Rp)", min_value=0.0, value=default_refund_t, step=1000.0)
         with c2:
-            penerimaan_nontunai = st.number_input("Penerimaan Non-Tunai (QRIS/EDC/Transfer) (Rp)", min_value=0.0, value=0.0, step=1000.0)
+            penerimaan_nontunai = st.number_input("Penerimaan Non-Tunai (QRIS/EDC/Transfer) (Rp)", min_value=0.0, value=default_nontunai, step=1000.0)
             piutang_nontunai = st.number_input("Pelunasan Piutang Non-Tunai (Rp)", min_value=0.0, value=0.0, step=1000.0)
             deposit_nontunai = st.number_input("Penerimaan Deposit Non-Tunai (Rp)", min_value=0.0, value=0.0, step=1000.0)
             biaya_admin = st.number_input("Biaya Admin EDC / QRIS (Rp)", min_value=0.0, value=0.0, step=100.0)
+
+        # Bagian rincian pecahan uang fisik tetap diisi manual oleh kasir seperti biasa di bawahnya...
 
         st.subheader("2. Rincian Pecahan Uang Tunai Fisik")
         col_f1, col_f2, col_f3, col_f4 = st.columns(4)
