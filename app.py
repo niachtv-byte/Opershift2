@@ -9,7 +9,14 @@ from reportlab.lib import colors
 
 # Set Page Config
 st.set_page_config(
-    st.sidebar.title("📌 Navigasi Menu")
+    page_title="Sistem Serah Terima Kasir - RS Adhyaksa Jatim",
+    page_icon="🏥",
+    layout="wide",
+    initial_sidebar_state="expanded"
+)
+
+# Navigasi Menu Sidebar
+st.sidebar.title("📌 Navigasi Menu")
 menu_pilihan = st.sidebar.radio(
     "Pilih Jenis Form:",
     ["Serah Terima Shift", "Closing Harian / Tutup Shift"]
