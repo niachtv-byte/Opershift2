@@ -9,12 +9,23 @@ from reportlab.lib import colors
 
 # Set Page Config
 st.set_page_config(
-    page_title="Sistem Serah Terima Kasir - RS Adhyaksa Jatim",
-    page_icon="🏥",
-    layout="wide",
-    initial_sidebar_state="expanded"
-)
+    import streamlit as st
+import pandas as pd
+from reportlab.lib.pagesizes import A4
+from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle
+from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+from reportlab.lib import colors
+import io
 
+# Konfigurasi Halaman
+st.set_page_config(page_title="Aplikasi Rekonsiliasi & Closing Kasir", layout="wide")
+
+# --- TAMBAHKAN INI DI BAGIAN ATAS SETELAH CONFIG ---
+st.sidebar.title("📌 Navigasi Menu")
+menu_pilihan = st.sidebar.radio(
+    "Pilih Jenis Form:",
+    ["Serah Terima Shift", "Closing Harian / Tutup Shift"]
+)
 # Custom Styling
 st.markdown("""
 <style>
