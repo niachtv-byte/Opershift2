@@ -507,9 +507,9 @@ t_sig.setStyle(TableStyle([
 ]))
 elements.append(t_sig)
     
-doc.build(elements)
-buffer.seek(0)
-return buffer
+    doc.build(elements)
+    buffer.seek(0)
+    return buffer
 
 st.markdown("---")
 st.subheader("🖨️ Cetak & Unduh Dokumen Closing")
