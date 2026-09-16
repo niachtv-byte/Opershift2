@@ -503,7 +503,7 @@ st.download_button(
     mime="application/pdf"
 )
 # --- FORM CLOSING HARIAN TAMBAHAN DI BAGIAN BAWAH ---
-elif menu_pilihan == "Closing Harian / Tutup Shift":
+if menu_pilihan == "Closing Harian / Tutup Shift":
     st.title("📑 Form Closing Harian & Tutup Shift Kasir")
     st.markdown("Form pendapatan otomatis dari tarikan SIMRS, dilengkapi rincian pecahan uang fisik.")
 
