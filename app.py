@@ -334,6 +334,52 @@ if menu_pilihan == "Serah Terima Shift":
         df_display_clean.to_excel(
             writer, index=False, sheet_name="Ringkasan SIMRS"
         )
+
+        worksheet = writer.sheets["Ringkasan SIMRS"]
+        start_row = len(df_display_clean) + 3
+
+        if "Cara Bayar" in df_grouped_final.columns:
+          cash_filter = (
+              df_grouped_final["Cara Bayar"]
+              .astype(str)
+              .str.upper()
+              .str.contains("CASH|TUNAI")
+          )
+
+          tunai_nominal = float(
+              df_grouped_final[cash_filter]["clean_bersih"].sum()
+          )
+          tunai_admin = float(df_grouped_final[cash_filter]["clean_admin"].sum())
+          tunai_netto = tunai_nominal - tunai_admin
+
+          nontunai_nominal = float(
+              df_grouped_final[~cash_filter]["clean_bersih"].sum()
+          )
+          nontunai_admin = float(
+              df_grouped_final[~cash_filter]["clean_admin"].sum()
+          )
+          nontunai_netto = nontunai_nominal - nontunai_admin
+        else:
+          tunai_nominal, tunai_admin, tunai_netto = 0, 0, 0
+          nontunai_nominal, nontunai_admin, nontunai_netto = 0, 0, 0
+
+        worksheet.cell(row=start_row, column=1, value="TOTAL TUNAI")
+        try:
+          worksheet.cell(row=start_row, column=5, value=tunai_nominal)
+          worksheet.cell(row=start_row, column=6, value=tunai_admin)
+          worksheet.cell(row=start_row, column=7, value=tunai_netto)
+        except:
+          pass
+
+        row_nontunai = start_row + 1
+        worksheet.cell(row=row_nontunai, column=1, value="TOTAL NON-TUNAI")
+        try:
+          worksheet.cell(row=row_nontunai, column=5, value=nontunai_nominal)
+          worksheet.cell(row=row_nontunai, column=6, value=nontunai_admin)
+          worksheet.cell(row=row_nontunai, column=7, value=nontunai_netto)
+        except:
+          pass
+
       excel_data = output.getvalue()
 
       st.download_button(
@@ -383,7 +429,6 @@ if menu_pilihan == "Serah Terima Shift":
       + logam
   )
 
-  # Total Uang Fisik Aktual ditampilkan di bawah input pecahan
   st.metric(
       label="💰 Total Uang Fisik Aktual (Cash Count)",
       value=f"Rp {total_uang_fisik:,.2f}",
@@ -417,7 +462,6 @@ if menu_pilihan == "Serah Terima Shift":
   )
 
 
-  # Fungsi Generate PDF Shift Utama
   def create_pdf(
       petugas_lama, petugas_baru, pj_kasir, catatan_tambahan, edited_pending_df
   ):
