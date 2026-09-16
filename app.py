@@ -486,31 +486,32 @@ def create_pdf():
     )
 
 # Gunakan style tersebut pada Paragraph Catatan Kasir
-elements.append(Paragraph(f"<b>Catatan Kasir:</b> {catatan_tambahan}", catatan_style))
-    
-elements.append(Paragraph("<b>4. PERNYATAAN SERAH TERIMA ANTAR SHIFT</b>", normal_bold))
-pernyataan_text = "Kas, dokumen, dan informasi transaksi shift telah diperiksa dan diserahterimakan sesuai kondisi pada saat pergantian shift."
-elements.append(Paragraph(pernyataan_text, normal_style))
-elements.append(Spacer(1, 15))
-    
-pj_name = pj_kasir if pj_kasir.strip() != "" else " ( .................................... ) "
-sig_data = [
-     ["Petugas Shift Lama (Menyerahkan)", "Petugas Shift Baru (Menerima)", "Mengetahui (Penanggung Jawab Kasir)"],
-     ["\n\n\n________________________", "\n\n\n________________________", "\n\n\n________________________"],
-     [petugas_lama, petugas_baru, pj_name]
-]
-t_sig = Table(sig_data, colWidths=[180, 180, 190])
-t_sig.setStyle(TableStyle([
-      ('ALIGN', (0,0), (-1,-1), 'CENTER'),
-      ('FONTSIZE', (0,0), (-1,-1), 8),
-      ('FONTNAME', (0,0), (0,0), 'Helvetica-Bold'),
-]))
-elements.append(t_sig)
+    elements.append(Paragraph(f"<b>Catatan Kasir:</b> {catatan_tambahan}", catatan_style))
+    elements.append(Spacer(1, 10))
+
+    elements.append(Paragraph("<b>4. PERNYATAAN SERAH TERIMA ANTAR SHIFT</b>", normal_bold))
+    pernyataan_text = "Kas, dokumen, dan informasi transaksi shift telah diperiksa dan diserahterimakan sesuai kondisi pada saat pergantian shift."
+    elements.append(Paragraph(pernyataan_text, normal_style))
+    elements.append(Spacer(1, 15))
+
+    pj_name = pj_kasir if pj_kasir.strip() != "" else " ( ................... ) "
+    sig_data = [
+        ["Petugas Shift Lama (Menyerahkan)", "Petugas Shift Baru (Menerima)", "Mengetahui (Penanggung Jawab Kasir)"],
+        ["\n\n\n_______________________", "\n\n\n_______________________", "\n\n\n_______________________"],
+        [petugas_lama, petugas_baru, pj_name]
+    ]
+
+    t_sig = Table(sig_data, colWidths=[180, 180, 190])
+    t_sig.setStyle(TableStyle([
+        ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
+        ('FONTSIZE', (0, 0), (-1, -1), 8),
+        ('FONTNAME', (0, 0), (0, 0), 'Helvetica-Bold'),
+    ]))
+    elements.append(t_sig)
 
     doc.build(elements)
     buffer.seek(0)
     return buffer
-
 st.markdown("---")
 st.subheader("🖨️ Cetak & Unduh Dokumen Closing")
 pdf_bytes = create_pdf()
