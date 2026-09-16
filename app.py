@@ -458,7 +458,7 @@ def create_pdf():
             Paragraph(ket, table_text_style),
             status_tindakan
         ])
-else:
+    else:
     pending_table_data.append(["-", "Tidak ada transaksi pending", "-", "-"])
 
     t_pending = Table(pending_table_data, colWidths=[30, 130, 230, 114])
