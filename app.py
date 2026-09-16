@@ -342,10 +342,11 @@ st.subheader("📝 Catatan Tambahan Kasir")
 catatan_tambahan = st.text_area("Catatan Tambahan", "Uang lebih Rp 22 karena pasien tidak mau menerima kembalian")
 
 # Generate PDF function
-def create_pdf():
+def create_pdf(petugas_lama, petugas_baru, pj_kasir, catatan_tambahan, edited_pending_df):
     buffer = io.BytesIO()
-    doc = SimpleDocTemplate(buffer, pagesize=A4, rightMargin=20, leftMargin=20, topMargin=20, bottomMargin=20)
-    styles = getSampleStyleSheet()
+    doc = SimpleDocTemplate(buffer, pagesize=letter)
+    elements = []
+    styles = getSampleStyleSheet() # Pastikan baris ini ada di dalam fungsi setelah def
     
     title_style = ParagraphStyle('TitleStyle', parent=styles['Heading1'], fontName='Helvetica-Bold', fontSize=14, alignment=1, spaceAfter=2)
     subtitle_style = ParagraphStyle('SubTitleStyle', parent=styles['Normal'], fontName='Helvetica', fontSize=10, alignment=1, spaceAfter=10)
@@ -514,7 +515,13 @@ def create_pdf():
     return buffer
 st.markdown("---")
 st.subheader("🖨️ Cetak & Unduh Dokumen Closing")
-pdf_bytes = create_pdf()
+pdf_bytes = create_pdf(
+    petugas_lama=st.session_state.get('petugas_lama', ''),
+    petugas_baru=st.session_state.get('petugas_baru', ''),
+    pj_kasir=st.session_state.get('pj_kasir', ''),
+    catatan_tambahan=st.session_state.get('catatan_tambahan', ''),
+    edited_pending_df=st.session_state.get('edited_pending_df', pd.DataFrame())
+)
 
 st.download_button(
     label="📄 Unduh Form Closing Kasir (PDF)",
