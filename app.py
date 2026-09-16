@@ -431,14 +431,14 @@ def create_pdf():
     pending_table_data = [["No.", "Nama / No RM", "Keterangan / Kendala", "Status / Tindak Lanjut"]]
     
     if not edited_pending_df.empty:
-    # Definisikan style paragraf untuk tabel agar teks bisa otomatis turun (wrap)
-    from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
-    styles = getSampleStyleSheet()
-    table_text_style = ParagraphStyle(
-        'TableTextCustom',
-        parent=styles['Normal'],
-        fontSize=8,
-        leading=10
+        # Definisikan style paragraf untuk tabel agar teks bisa otomatis turun (wrap)
+        from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+        styles = getSampleStyleSheet()
+        table_text_style = ParagraphStyle(
+            'TableTextCustom',
+            parent=styles['Normal'],
+            fontSize=8,
+            leading=10
     )
 
     for idx, row in edited_pending_df.reset_index(drop=True).iterrows():
