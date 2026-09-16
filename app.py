@@ -506,7 +506,7 @@ t_sig.setStyle(TableStyle([
       ('FONTNAME', (0,0), (0,0), 'Helvetica-Bold'),
 ]))
 elements.append(t_sig)
-    
+
     doc.build(elements)
     buffer.seek(0)
     return buffer
